@@ -85,6 +85,7 @@ local function begin_table(ctx, id, cols)
 end
 
 function panel.render_header(ctx, ws, scale, ui)
+  scale = scale * 0.75
   local track_name = ws.track_name or 'Track'
   local fx_name = ws.fx_name or 'FX'
   local enabled = true
@@ -165,6 +166,7 @@ function panel.render_header(ctx, ws, scale, ui)
 end
 
 function panel.render_presets_row(ctx, ws, scale, ui)
+  scale = scale * 0.75
   local list = ws.presets or {}
   local btn_h = 26 * scale
   local gap = 8 * scale
@@ -421,7 +423,7 @@ local function slope_combo(ctx, label, track, fx, pidx, scale)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = (state and (state.scale or state.ui_scale)) or 1.0
+  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * 0.75
 
   -- If we can't draw, fall back to the inspector-like UI.
   if not (

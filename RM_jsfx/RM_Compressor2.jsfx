@@ -27,6 +27,8 @@ in_pin:L in
 in_pin:R in 
 in_pin:Sidechain L
 in_pin:Sidechain R
+in_pin:Sidechain L 2
+in_pin:Sidechain R 2
 out_pin:L out
 out_pin:R out
 
@@ -609,7 +611,7 @@ listen = slider7;
 @sample
 // telemetry peak capture
 pkIn = max(pkIn, max(abs(spl0), abs(spl1)));
-pkSC = max(pkSC, max(abs(spl2), abs(spl3)));
+pkSC = max(pkSC, max(max(abs(spl2), abs(spl3)), max(abs(spl4), abs(spl5))));
 /*
 inL ? (oops = 0):(inL = spl0);
 inR ? (oops = 0):(inR = spl1);
@@ -624,7 +626,7 @@ inR = feedR;// spl1;
 inL = spl0; inR = spl1;
 );
 slider9 == 1 ? (
-inL = spl2; inR = spl3;
+inL = (spl2 + spl4) * 0.5; inR = (spl3 + spl5) * 0.5;
 );
 
 hp_hz = slider19;

@@ -50,6 +50,7 @@ local function right_align(ctx, right_w)
 end
 
 function panel.render_header(ctx, ws, scale, ui)
+  scale = scale * 0.75
   local track_name = ws.track_name or 'Track'
   local fx_name = ws.fx_name or 'FX'
   local enabled = true
@@ -135,6 +136,7 @@ function panel.render_header(ctx, ws, scale, ui)
 end
 
 function panel.render_presets_row(ctx, ws, scale, ui)
+  scale = scale * 0.75
   local list = ws.presets or {}
   local btn_h = 26 * scale
   local gap = 8 * scale
@@ -190,7 +192,7 @@ function panel.render_presets_row(ctx, ws, scale, ui)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = (state and (state.scale or state.ui_scale)) or 1.0
+  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * 0.75
 
   local v = clamp01(params.get_norm(track, fx, IDX_AMOUNT))
   local dl_ok = (reaper.ImGui_GetWindowDrawList ~= nil) and (reaper.ImGui_DrawList_AddRectFilled ~= nil) and (reaper.ImGui_ColorConvertDouble4ToU32 ~= nil)
