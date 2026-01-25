@@ -474,7 +474,11 @@ local function render_window(ctx, ws)
     local frame_had_err = false
     local body_ok, body_err = xpcall(function()
       if shown then
-        header_row(ctx, ws, scale)
+        if ws.panel and ws.panel.render_header then
+          ws.panel.render_header(ctx, ws, scale, ui)
+        else
+          header_row(ctx, ws, scale)
+        end
 
         -- Always show last error *before* calling presets/panel.
         -- Otherwise a recurring failure inside presets_row() makes the window
@@ -497,7 +501,11 @@ local function render_window(ctx, ws)
 
         -- Presets row (protected) - keep rendering even if presets UI breaks.
         local ok_p, err_p = xpcall(function()
-          presets_row(ctx, ws, scale)
+          if ws.panel and ws.panel.render_presets_row then
+            ws.panel.render_presets_row(ctx, ws, scale, ui)
+          else
+            presets_row(ctx, ws, scale)
+          end
         end, debug.traceback)
         if not ok_p then
           ws.last_error = tostring(err_p)
