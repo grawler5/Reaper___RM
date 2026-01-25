@@ -129,92 +129,90 @@ function panel.render(ctx, track, fx, ui, state)
   end
 
   local draw_scale, panel_w, panel_h = panel_scale(ctx, state)
-  ui.with_child(ctx, '##rm_1175_panel', panel_w, panel_h, false, 0, function()
-    local dl = reaper.ImGui_GetWindowDrawList(ctx)
-    local x0, y0 = compat.get_cursor_screen_pos(ctx)
+  local dl = reaper.ImGui_GetWindowDrawList(ctx)
+  local x0, y0 = compat.get_cursor_screen_pos(ctx)
 
-    local bg = color_u32(0.13, 0.13, 0.14, 1.0)
-    local bd = color_u32(0, 0, 0, 0.7)
-    reaper.ImGui_DrawList_AddRectFilled(dl, x0, y0, x0 + panel_w, y0 + panel_h, bg, 10 * draw_scale)
-    reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, bd, 10 * draw_scale, 0, 1.0)
+  local bg = color_u32(0.13, 0.13, 0.14, 1.0)
+  local bd = color_u32(0, 0, 0, 0.7)
+  reaper.ImGui_DrawList_AddRectFilled(dl, x0, y0, x0 + panel_w, y0 + panel_h, bg, 10 * draw_scale)
+  reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, bd, 10 * draw_scale, 0, 1.0)
 
-    local map = map_params(track, fx)
+  local map = map_params(track, fx)
 
-    knob_at(ctx, track, fx, ui, x0 + 80 * draw_scale, y0 + 60 * draw_scale, 100, map.input, draw_scale, '##1175_in', false)
-    knob_at(ctx, track, fx, ui, x0 + 270 * draw_scale, y0 + 60 * draw_scale, 100, map.output, draw_scale, '##1175_out', false)
-    knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 53 * draw_scale, 40, map.attack, draw_scale, '##1175_att', true)
-    knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 133 * draw_scale, 40, map.release, draw_scale, '##1175_rel', true)
+  knob_at(ctx, track, fx, ui, x0 + 80 * draw_scale, y0 + 60 * draw_scale, 100, map.input, draw_scale, '##1175_in', false)
+  knob_at(ctx, track, fx, ui, x0 + 270 * draw_scale, y0 + 60 * draw_scale, 100, map.output, draw_scale, '##1175_out', false)
+  knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 53 * draw_scale, 40, map.attack, draw_scale, '##1175_att', true)
+  knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 133 * draw_scale, 40, map.release, draw_scale, '##1175_rel', true)
 
-    local ratio_raw = select(1, params.get_raw(track, fx, map.ratio))
-    local ratio_is_all = ratio_raw >= 3.5
+  local ratio_raw = select(1, params.get_raw(track, fx, map.ratio))
+  local ratio_is_all = ratio_raw >= 3.5
 
-    local ratio_positions = {
-      { raw = 3, label = '20', x = 540, y = 40 },
-      { raw = 2, label = '12', x = 540, y = 75 },
-      { raw = 1, label = '8', x = 540, y = 110 },
-      { raw = 0, label = '4', x = 540, y = 145 },
-    }
+  local ratio_positions = {
+    { raw = 3, label = '20', x = 540, y = 40 },
+    { raw = 2, label = '12', x = 540, y = 75 },
+    { raw = 1, label = '8', x = 540, y = 110 },
+    { raw = 0, label = '4', x = 540, y = 145 },
+  }
 
-    for _, btn in ipairs(ratio_positions) do
-      local active = ratio_is_all or math.abs(ratio_raw - btn.raw) < 0.51
-      local bx = x0 + btn.x * draw_scale
-      local by = y0 + btn.y * draw_scale
-      local clicked = draw_rect_button(ctx, dl, '##ratio_' .. btn.label, bx, by, 35 * draw_scale, 35 * draw_scale, active, draw_scale)
-      if clicked then
-        params.set_raw(track, fx, map.ratio, btn.raw)
-      end
-      draw_label(ctx, dl, btn.label, bx + 10 * draw_scale, by + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
+  for _, btn in ipairs(ratio_positions) do
+    local active = ratio_is_all or math.abs(ratio_raw - btn.raw) < 0.51
+    local bx = x0 + btn.x * draw_scale
+    local by = y0 + btn.y * draw_scale
+    local clicked = draw_rect_button(ctx, dl, '##ratio_' .. btn.label, bx, by, 35 * draw_scale, 35 * draw_scale, active, draw_scale)
+    if clicked then
+      params.set_raw(track, fx, map.ratio, btn.raw)
     end
+    draw_label(ctx, dl, btn.label, bx + 10 * draw_scale, by + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
+  end
 
-    local key = fx_key(track, fx)
-    local last_ratio = last_ratio_cache[key]
+  local key = fx_key(track, fx)
+  local last_ratio = last_ratio_cache[key]
 
-    local all_x = x0 + 820 * draw_scale
-    local all_y = y0 + 145 * draw_scale
-    local all_active = ratio_is_all
-    local all_clicked = draw_rect_button(ctx, dl, '##ratio_all', all_x, all_y, 35 * draw_scale, 35 * draw_scale, all_active, draw_scale)
-    if all_clicked then
-      if not ratio_is_all then
-        if ratio_raw <= 3 then last_ratio_cache[key] = ratio_raw end
-        params.set_raw(track, fx, map.ratio, 4)
-      else
-        params.set_raw(track, fx, map.ratio, last_ratio or 0)
-      end
+  local all_x = x0 + 820 * draw_scale
+  local all_y = y0 + 145 * draw_scale
+  local all_active = ratio_is_all
+  local all_clicked = draw_rect_button(ctx, dl, '##ratio_all', all_x, all_y, 35 * draw_scale, 35 * draw_scale, all_active, draw_scale)
+  if all_clicked then
+    if not ratio_is_all then
+      if ratio_raw <= 3 then last_ratio_cache[key] = ratio_raw end
+      params.set_raw(track, fx, map.ratio, 4)
+    else
+      params.set_raw(track, fx, map.ratio, last_ratio or 0)
     end
-    draw_label(ctx, dl, 'ALL', all_x + 4 * draw_scale, all_y + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
+  end
+  draw_label(ctx, dl, 'ALL', all_x + 4 * draw_scale, all_y + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
 
-    local punch = params.get_norm(track, fx, map.punch) > 0.5
-    local sc_key = params.get_norm(track, fx, map.sc_key) > 0.5
-    local trick = params.get_norm(track, fx, map.trick) > 0.5
+  local punch = params.get_norm(track, fx, map.punch) > 0.5
+  local sc_key = params.get_norm(track, fx, map.sc_key) > 0.5
+  local trick = params.get_norm(track, fx, map.trick) > 0.5
 
-    local function opt_button(name, x, y, active, param)
-      local bx = x0 + x * draw_scale
-      local by = y0 + y * draw_scale
-      local clicked = draw_rect_button(ctx, dl, '##' .. name, bx, by, 35 * draw_scale, 35 * draw_scale, active, draw_scale)
-      if clicked then
-        params.set_norm(track, fx, param, active and 0 or 1)
-      end
-      draw_label(ctx, dl, name, bx + 2 * draw_scale, by + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
+  local function opt_button(name, x, y, active, param)
+    local bx = x0 + x * draw_scale
+    local by = y0 + y * draw_scale
+    local clicked = draw_rect_button(ctx, dl, '##' .. name, bx, by, 35 * draw_scale, 35 * draw_scale, active, draw_scale)
+    if clicked then
+      params.set_norm(track, fx, param, active and 0 or 1)
     end
+    draw_label(ctx, dl, name, bx + 2 * draw_scale, by + 9 * draw_scale, color_u32(0.1, 0.1, 0.1, 1.0))
+  end
 
-    opt_button('P', 820, 40, punch, map.punch)
-    opt_button('SC', 820, 75, sc_key, map.sc_key)
-    opt_button('TR', 820, 110, trick, map.trick)
+  opt_button('P', 820, 40, punch, map.punch)
+  opt_button('SC', 820, 75, sc_key, map.sc_key)
+  opt_button('TR', 820, 110, trick, map.trick)
 
-    local gr_raw = select(1, params.get_raw(track, fx, map.gr))
-    local angle = angle_from_gr(gr_raw)
-    local pivot_x = x0 + 700 * draw_scale
-    local pivot_y = y0 + 147 * draw_scale
-    draw_needle(dl, pivot_x, pivot_y, 78 * draw_scale, angle, draw_scale)
+  local gr_raw = select(1, params.get_raw(track, fx, map.gr))
+  local angle = angle_from_gr(gr_raw)
+  local pivot_x = x0 + 700 * draw_scale
+  local pivot_y = y0 + 147 * draw_scale
+  draw_needle(dl, pivot_x, pivot_y, 78 * draw_scale, angle, draw_scale)
 
-    draw_label(ctx, dl, 'IN', x0 + 110 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
-    draw_label(ctx, dl, 'OUT', x0 + 295 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
-    draw_label(ctx, dl, 'ATT', x0 + 450 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
-    draw_label(ctx, dl, 'REL', x0 + 450 * draw_scale, y0 + 175 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
+  draw_label(ctx, dl, 'IN', x0 + 110 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
+  draw_label(ctx, dl, 'OUT', x0 + 295 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
+  draw_label(ctx, dl, 'ATT', x0 + 450 * draw_scale, y0 + 30 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
+  draw_label(ctx, dl, 'REL', x0 + 450 * draw_scale, y0 + 175 * draw_scale, color_u32(0.9, 0.9, 0.9, 0.7))
 
-    compat.set_cursor_screen_pos(ctx, x0, y0)
-    if reaper.ImGui_Dummy then reaper.ImGui_Dummy(ctx, panel_w, panel_h) end
-  end)
+  compat.set_cursor_screen_pos(ctx, x0, y0)
+  if reaper.ImGui_Dummy then reaper.ImGui_Dummy(ctx, panel_w, panel_h) end
 end
 
 return panel

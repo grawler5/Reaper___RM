@@ -117,46 +117,44 @@ function panel.render(ctx, track, fx, ui, state)
   end
 
   local draw_scale, panel_w, panel_h = panel_scale(ctx, state)
-  ui.with_child(ctx, '##rm_la1a_panel', panel_w, panel_h, false, 0, function()
-    local dl = reaper.ImGui_GetWindowDrawList(ctx)
-    local x0, y0 = compat.get_cursor_screen_pos(ctx)
+  local dl = reaper.ImGui_GetWindowDrawList(ctx)
+  local x0, y0 = compat.get_cursor_screen_pos(ctx)
 
-    local bg = color_u32(0.14, 0.13, 0.12, 1.0)
-    local bd = color_u32(0, 0, 0, 0.7)
-    reaper.ImGui_DrawList_AddRectFilled(dl, x0, y0, x0 + panel_w, y0 + panel_h, bg, 10 * draw_scale)
-    reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, bd, 10 * draw_scale, 0, 1.0)
+  local bg = color_u32(0.14, 0.13, 0.12, 1.0)
+  local bd = color_u32(0, 0, 0, 0.7)
+  reaper.ImGui_DrawList_AddRectFilled(dl, x0, y0, x0 + panel_w, y0 + panel_h, bg, 10 * draw_scale)
+  reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, bd, 10 * draw_scale, 0, 1.0)
 
-    local map = map_params(track, fx)
+  local map = map_params(track, fx)
 
-    knob_at(ctx, track, fx, ui, x0 + 165 * draw_scale, y0 + 130 * draw_scale, 70, map.gain, draw_scale, '##la1a_gain', false)
-    knob_at(ctx, track, fx, ui, x0 + 565 * draw_scale, y0 + 130 * draw_scale, 70, map.threshold, draw_scale, '##la1a_pr', true)
+  knob_at(ctx, track, fx, ui, x0 + 165 * draw_scale, y0 + 130 * draw_scale, 70, map.gain, draw_scale, '##la1a_gain', false)
+  knob_at(ctx, track, fx, ui, x0 + 565 * draw_scale, y0 + 130 * draw_scale, 70, map.threshold, draw_scale, '##la1a_pr', true)
 
-    local mode_on = params.get_norm(track, fx, map.mode) > 0.5
-    local mode_clicked = draw_switch(ctx, dl, 'mode', x0 + 55 * draw_scale, y0 + 130 * draw_scale, 48 * draw_scale, 60 * draw_scale, mode_on, draw_scale)
-    if mode_clicked then
-      params.set_norm(track, fx, map.mode, mode_on and 0 or 1)
-    end
+  local mode_on = params.get_norm(track, fx, map.mode) > 0.5
+  local mode_clicked = draw_switch(ctx, dl, 'mode', x0 + 55 * draw_scale, y0 + 130 * draw_scale, 48 * draw_scale, 60 * draw_scale, mode_on, draw_scale)
+  if mode_clicked then
+    params.set_norm(track, fx, map.mode, mode_on and 0 or 1)
+  end
 
-    local sc_on = params.get_norm(track, fx, map.sidechain) > 0.5
-    local sc_clicked = draw_switch(ctx, dl, 'sc', x0 + 665 * draw_scale, y0 + 90 * draw_scale, 48 * draw_scale, 60 * draw_scale, sc_on, draw_scale)
-    if sc_clicked then
-      params.set_norm(track, fx, map.sidechain, sc_on and 0 or 1)
-    end
+  local sc_on = params.get_norm(track, fx, map.sidechain) > 0.5
+  local sc_clicked = draw_switch(ctx, dl, 'sc', x0 + 665 * draw_scale, y0 + 90 * draw_scale, 48 * draw_scale, 60 * draw_scale, sc_on, draw_scale)
+  if sc_clicked then
+    params.set_norm(track, fx, map.sidechain, sc_on and 0 or 1)
+  end
 
-    local gr_raw = select(1, params.get_raw(track, fx, map.gr))
-    local angle = angle_from_gr(gr_raw)
-    local pivot_x = x0 + 385 * draw_scale
-    local pivot_y = y0 + (200 * (237 / 238)) * draw_scale
-    draw_needle(dl, pivot_x, pivot_y, 105 * draw_scale, angle, draw_scale)
+  local gr_raw = select(1, params.get_raw(track, fx, map.gr))
+  local angle = angle_from_gr(gr_raw)
+  local pivot_x = x0 + 385 * draw_scale
+  local pivot_y = y0 + (200 * (237 / 238)) * draw_scale
+  draw_needle(dl, pivot_x, pivot_y, 105 * draw_scale, angle, draw_scale)
 
-    draw_label(ctx, dl, 'GAIN', x0 + 178 * draw_scale, y0 + 110 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
-    draw_label(ctx, dl, 'PEAK', x0 + 570 * draw_scale, y0 + 110 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
-    draw_label(ctx, dl, mode_on and 'LIMIT' or 'COMP', x0 + 45 * draw_scale, y0 + 195 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
-    draw_label(ctx, dl, sc_on and 'SC' or 'MAIN', x0 + 665 * draw_scale, y0 + 70 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
+  draw_label(ctx, dl, 'GAIN', x0 + 178 * draw_scale, y0 + 110 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
+  draw_label(ctx, dl, 'PEAK', x0 + 570 * draw_scale, y0 + 110 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
+  draw_label(ctx, dl, mode_on and 'LIMIT' or 'COMP', x0 + 45 * draw_scale, y0 + 195 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
+  draw_label(ctx, dl, sc_on and 'SC' or 'MAIN', x0 + 665 * draw_scale, y0 + 70 * draw_scale, color_u32(0.9, 0.85, 0.7, 0.8))
 
-    compat.set_cursor_screen_pos(ctx, x0, y0)
-    if reaper.ImGui_Dummy then reaper.ImGui_Dummy(ctx, panel_w, panel_h) end
-  end)
+  compat.set_cursor_screen_pos(ctx, x0, y0)
+  if reaper.ImGui_Dummy then reaper.ImGui_Dummy(ctx, panel_w, panel_h) end
 end
 
 return panel
