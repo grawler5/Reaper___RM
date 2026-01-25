@@ -113,6 +113,22 @@ function panel.render(ctx, track, fx, ui, state)
   local card_h = math.min(320 * scale, (avail_h or 0) - 80 * scale)
 
   local dl = reaper.ImGui_GetWindowDrawList(ctx)
+  local function draw_readout(text, x, y, w, h)
+    local bg = reaper.ImGui_ColorConvertDouble4ToU32(0.08, 0.09, 0.11, 1.0)
+    local bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.65)
+    local txc = reaper.ImGui_ColorConvertDouble4ToU32(0.92, 0.92, 0.92, 0.9)
+    reaper.ImGui_DrawList_AddRectFilled(dl, x, y, x + w, y + h, bg, 6 * scale)
+    reaper.ImGui_DrawList_AddRect(dl, x, y, x + w, y + h, bd, 6 * scale, 0, 1.0)
+    if reaper.ImGui_CalcTextSize then
+      local tw, th = reaper.ImGui_CalcTextSize(ctx, text)
+      local tx = x + (w - (tw or 0)) * 0.5
+      local ty = y + (h - (th or 0)) * 0.5
+      reaper.ImGui_DrawList_AddText(dl, tx, ty, txc, text)
+    else
+      reaper.ImGui_DrawList_AddText(dl, x + 6 * scale, y + 4 * scale, txc, text)
+    end
+  end
+
   local function draw_card(title, w, h, fn)
     local x0, y0 = compat.get_cursor_screen_pos(ctx)
     local bg = reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.14, 1.0)
@@ -136,7 +152,6 @@ function panel.render(ctx, track, fx, ui, state)
     local th_fmt = params.get_formatted(track, fx, P.threshold)
     local gr_db = params.get_raw(track, fx, P.gr_db)
     local gr_norm = compat.clamp((gr_db or 0) / 24.0, 0, 1)
-
     local slider_h = inner_h - 60 * scale
 
     reaper.ImGui_BeginGroup(ctx)
@@ -147,20 +162,21 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_SameLine(ctx, 0, 16 * scale)
     ui.meter_v(ctx, gr_norm, scale, slider_h)
 
-    reaper.ImGui_Dummy(ctx, 1, 6 * scale)
-    reaper.ImGui_Text(ctx, 'IN')
-    reaper.ImGui_SameLine(ctx, 0, 12 * scale)
-    reaper.ImGui_Text(ctx, 'THR')
-    reaper.ImGui_SameLine(ctx, 0, 12 * scale)
-    reaper.ImGui_Text(ctx, 'GR')
-    reaper.ImGui_Text(ctx, format_meter_value(P.in_peak))
-    reaper.ImGui_SameLine(ctx, 0, 8 * scale)
-    reaper.ImGui_Text(ctx, th_fmt or '—')
-    reaper.ImGui_SameLine(ctx, 0, 8 * scale)
+    local x0, y0 = compat.get_cursor_screen_pos(ctx)
+    local label_col = reaper.ImGui_ColorConvertDouble4ToU32(0.85, 0.86, 0.88, 0.8)
+    local readout_w = (inner_w - 16 * scale) / 3
+    local readout_h = 26 * scale
+    local row_y = y0 + slider_h + 10 * scale
+    reaper.ImGui_DrawList_AddText(dl, x0, row_y - 16 * scale, label_col, 'IN')
+    reaper.ImGui_DrawList_AddText(dl, x0 + readout_w + 8 * scale, row_y - 16 * scale, label_col, 'THR')
+    reaper.ImGui_DrawList_AddText(dl, x0 + (readout_w + 8 * scale) * 2, row_y - 16 * scale, label_col, 'GR')
+    draw_readout(format_meter_value(P.in_peak), x0, row_y, readout_w, readout_h)
+    draw_readout(th_fmt or '—', x0 + readout_w + 8 * scale, row_y, readout_w, readout_h)
     local gr_text = string.format('%.1f dB', gr_db or 0)
-    reaper.ImGui_Text(ctx, gr_text)
+    draw_readout(gr_text, x0 + (readout_w + 8 * scale) * 2, row_y, readout_w, readout_h)
 
     local sc = params.get_norm(track, fx, P.sidechain)
+    reaper.ImGui_Dummy(ctx, 1, 6 * scale)
     local changed, on = ui.toggle(ctx, sc > 0.5 and 'Detector: SC' or 'Detector: Main', sc > 0.5, scale)
     if changed then params.set_norm(track, fx, P.sidechain, on and 1 or 0) end
   end)

@@ -86,7 +86,7 @@ end
 
 local function angle_from_gr(gr)
   local g = compat.clamp(gr or 0, 0, 24)
-  local t = math.pow(g / 24, 0.65)
+  local t = (g / 24) ^ 0.65
   local a0 = 25
   local a1 = -72
   return a0 + (a1 - a0) * t
