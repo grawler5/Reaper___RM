@@ -627,8 +627,12 @@ inL = spl0; inR = spl1;
 );
 
 sidechain_on = slider9 >= 0.5;
-detL = sidechain_on ? ((spl2 + spl4) * 0.5) : inL;
-detR = sidechain_on ? ((spl3 + spl5) * 0.5) : inR;
+sc1 = max(abs(spl2), abs(spl3));
+sc2 = max(abs(spl4), abs(spl5));
+scL = sc1 >= sc2 ? spl2 : spl4;
+scR = sc1 >= sc2 ? spl3 : spl5;
+detL = sidechain_on ? scL : inL;
+detR = sidechain_on ? scR : inR;
 
 hp_hz = slider19;
 lp_hz = slider18;
