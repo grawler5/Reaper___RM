@@ -274,24 +274,10 @@ local function header_row(ctx, ws, scale)
   local right_w = w_insp + gap + w_on + gap + w_x
   reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 6 * scale)
 
-  local avail_w = 0
-  if reaper.ImGui_GetContentRegionAvail then
-    avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
-  end
-  local left_w = math.max(0, avail_w - right_w - gap)
-
-  local function draw_title()
-    reaper.ImGui_AlignTextToFramePadding(ctx)
-    ui.push_color(ctx, reaper.ImGui_Col_Text, 0.90, 0.90, 0.90, 1.0)
-    reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
-    pcall(reaper.ImGui_PopStyleColor, ctx)
-  end
-
-  if left_w > 0 and ui.with_child then
-    ui.with_child(ctx, '##hdr_left' .. ws.id, left_w, btn_h, false, 0, draw_title)
-  else
-    draw_title()
-  end
+  reaper.ImGui_AlignTextToFramePadding(ctx)
+  ui.push_color(ctx, reaper.ImGui_Col_Text, 0.90, 0.90, 0.90, 1.0)
+  reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
+  pcall(reaper.ImGui_PopStyleColor, ctx)
 
   -- Buttons
   reaper.ImGui_SameLine(ctx, 0, 0)

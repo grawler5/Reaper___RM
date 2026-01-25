@@ -104,35 +104,49 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + total_h, bd, r, 0, 1.0)
     reaper.ImGui_DrawList_AddRect(dl, x0 + 1, y0 + 1, x0 + panel_w - 1, y0 + total_h - 1, inl, r - 1, 0, 1.0)
 
+    -- Inner panel (lighter, like web UI inset)
+    local inner_pad_x = 28 * draw_scale
+    local inner_pad_y = 18 * draw_scale
+    local inner_x1 = x0 + inner_pad_x
+    local inner_y1 = y0 + inner_pad_y
+    local inner_x2 = x0 + panel_w - inner_pad_x
+    local inner_y2 = y0 + main_h - inner_pad_y
+    local inner_r = 14 * draw_scale
+    local inner_top = reaper.ImGui_ColorConvertDouble4ToU32(0.44, 0.46, 0.49, 1.0)
+    local inner_bot = reaper.ImGui_ColorConvertDouble4ToU32(0.32, 0.34, 0.37, 1.0)
+    local inner_bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.40)
+    dl_rect_multi(dl, inner_x1, inner_y1, inner_x2, inner_y2, inner_top, inner_top, inner_bot, inner_bot)
+    reaper.ImGui_DrawList_AddRect(dl, inner_x1, inner_y1, inner_x2, inner_y2, inner_bd, inner_r, 0, 1.0)
+
     -- Track
     local tr_w = 12 * draw_scale
     local tr_x = x0 + (panel_w - tr_w) * 0.5
-    local tr_y1 = y0 + 30 * draw_scale
-    local tr_y2 = y0 + main_h - 30 * draw_scale
+    local tr_y1 = inner_y1 + 20 * draw_scale
+    local tr_y2 = inner_y2 - 20 * draw_scale
     local tr_col = reaper.ImGui_ColorConvertDouble4ToU32(0.14, 0.14, 0.14, 1.0)
     reaper.ImGui_DrawList_AddRectFilled(dl, tr_x, tr_y1, tr_x + tr_w, tr_y2, tr_col, tr_w * 0.5)
 
     -- Thumb position (top = 1.0)
-    local th_w = 140 * draw_scale
-    local th_h = 44 * draw_scale
+    local th_w = 150 * draw_scale
+    local th_h = 46 * draw_scale
     local t = 1.0 - v
     local th_y = tr_y1 + t * ((tr_y2 - tr_y1) - th_h)
     local th_x1 = x0 + (panel_w - th_w) * 0.5
     local th_x2 = th_x1 + th_w
 
-    local th1 = reaper.ImGui_ColorConvertDouble4ToU32(0.66, 0.66, 0.66, 1.0)
-    local th2 = reaper.ImGui_ColorConvertDouble4ToU32(0.52, 0.52, 0.52, 1.0)
+    local th1 = reaper.ImGui_ColorConvertDouble4ToU32(0.58, 0.60, 0.64, 1.0)
+    local th2 = reaper.ImGui_ColorConvertDouble4ToU32(0.46, 0.48, 0.52, 1.0)
     reaper.ImGui_DrawList_AddRectFilled(dl, th_x1, th_y, th_x2, th_y + th_h, th1, 12 * draw_scale)
     reaper.ImGui_DrawList_AddRectFilled(dl, th_x1 + 1, th_y + 1, th_x2 - 1, th_y + th_h - 1, th2, 11 * draw_scale)
 
     -- Grip lines
-    local grip_col = reaper.ImGui_ColorConvertDouble4ToU32(0.25, 0.25, 0.25, 0.9)
+    local grip_col = reaper.ImGui_ColorConvertDouble4ToU32(0.24, 0.24, 0.26, 0.9)
     local gx = (th_x1 + th_x2) * 0.5
     local gy = th_y + th_h * 0.5
-    local lg = 14 * draw_scale
+    local lg = 36 * draw_scale
     for i = -1, 1 do
-      local xx = gx + i * 6 * draw_scale
-      reaper.ImGui_DrawList_AddLine(dl, xx, gy - lg, xx, gy + lg, grip_col, 2.0)
+      local yy = gy + i * 6 * draw_scale
+      reaper.ImGui_DrawList_AddLine(dl, gx - lg * 0.5, yy, gx + lg * 0.5, yy, grip_col, 2.0)
     end
   else
     -- Fallback slider if drawlist is unavailable
@@ -145,7 +159,7 @@ function panel.render(ctx, track, fx, ui, state)
   end
 
   -- Readout (bottom black capsule like Web UI)
-  local txt_val = string.format('%.0f', v * 100)
+  local txt_val = string.format('%.1f', v * 100)
   if dl_ok and reaper.ImGui_GetCursorScreenPos then
     local dl = reaper.ImGui_GetWindowDrawList(ctx)
     local rx = x0 + (panel_w - (160 * draw_scale)) * 0.5
