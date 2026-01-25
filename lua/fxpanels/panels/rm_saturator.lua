@@ -73,6 +73,17 @@ local function right_align(ctx, right_w)
   end
 end
 
+local function begin_table(ctx, id, cols)
+  if not reaper.ImGui_BeginTable then return false end
+  local flags = 0
+  local sizing = compat.resolve_enum(reaper.ImGui_TableFlags_SizingStretchProp)
+    or compat.resolve_enum(reaper.ImGui_TableFlags_SizingStretchSame)
+    or compat.resolve_enum(reaper.ImGui_TableFlags_SizingFixedFit)
+  if not sizing then return false end
+  flags = compat.bor(flags, sizing)
+  return reaper.ImGui_BeginTable(ctx, id, cols, flags)
+end
+
 function panel.render_header(ctx, ws, scale, ui)
   local track_name = ws.track_name or 'Track'
   local fx_name = ws.fx_name or 'FX'
@@ -334,6 +345,9 @@ local function style_buttons(ctx, track, fx, scale)
   local gap = 8 * scale
   local btn_w = math.max(70 * scale, (avail_w - gap * (#STYLE - 1)) / #STYLE)
 
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameRounding), 8 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameBorderSize), 1 * scale)
+  reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Border), reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.6))
   for i, lab in ipairs(STYLE) do
     local on = (cur == (i - 1))
     if on then
@@ -342,13 +356,13 @@ local function style_buttons(ctx, track, fx, scale)
       reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Text), reaper.ImGui_ColorConvertDouble4ToU32(0.96, 0.86, 0.75, 1.0))
     end
     if on then
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Button), reaper.ImGui_ColorConvertDouble4ToU32(0.42, 0.29, 0.21, 1.0))
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.48, 0.34, 0.24, 1.0))
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonActive), reaper.ImGui_ColorConvertDouble4ToU32(0.36, 0.24, 0.18, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Button), reaper.ImGui_ColorConvertDouble4ToU32(0.41, 0.29, 0.21, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.46, 0.33, 0.24, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonActive), reaper.ImGui_ColorConvertDouble4ToU32(0.35, 0.24, 0.18, 1.0))
     else
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Button), reaper.ImGui_ColorConvertDouble4ToU32(0.42, 0.29, 0.21, 1.0))
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.48, 0.34, 0.24, 1.0))
-      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonActive), reaper.ImGui_ColorConvertDouble4ToU32(0.36, 0.24, 0.18, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Button), reaper.ImGui_ColorConvertDouble4ToU32(0.41, 0.29, 0.21, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.46, 0.33, 0.24, 1.0))
+      reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonActive), reaper.ImGui_ColorConvertDouble4ToU32(0.35, 0.24, 0.18, 1.0))
     end
     if reaper.ImGui_Button(ctx, lab, btn_w, btn_h) then
       params.set_raw(track, fx, P.style, i - 1)
@@ -356,9 +370,14 @@ local function style_buttons(ctx, track, fx, scale)
     reaper.ImGui_PopStyleColor(ctx, 4)
     if i < #STYLE then reaper.ImGui_SameLine(ctx, 0, gap) end
   end
+  reaper.ImGui_PopStyleColor(ctx, 1)
+  reaper.ImGui_PopStyleVar(ctx, 2)
 end
 
 local function mini_toggle_button(ctx, label, on, w, h, scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameRounding), 6 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameBorderSize), 1 * scale)
+  reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Border), reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.6))
   if on then
     reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Button), reaper.ImGui_ColorConvertDouble4ToU32(0.42, 0.29, 0.21, 1.0))
     reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_ButtonHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.50, 0.36, 0.25, 1.0))
@@ -370,6 +389,8 @@ local function mini_toggle_button(ctx, label, on, w, h, scale)
   end
   local clicked = reaper.ImGui_Button(ctx, label, w, h)
   reaper.ImGui_PopStyleColor(ctx, 3)
+  reaper.ImGui_PopStyleColor(ctx, 1)
+  reaper.ImGui_PopStyleVar(ctx, 2)
   return clicked
 end
 
@@ -385,11 +406,15 @@ local function slope_combo(ctx, label, track, fx, pidx, scale)
   reaper.ImGui_PopStyleColor(ctx, 1)
   local items = {}
   for i, v in ipairs(SLOPES) do items[i] = tostring(v) .. ' dB/oct' end
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameRounding), 6 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FrameBorderSize), 1 * scale)
+  reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Border), reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.6))
   reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_FrameBg), reaper.ImGui_ColorConvertDouble4ToU32(0.36, 0.25, 0.18, 1.0))
   reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_FrameBgHovered), reaper.ImGui_ColorConvertDouble4ToU32(0.42, 0.30, 0.22, 1.0))
   reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_FrameBgActive), reaper.ImGui_ColorConvertDouble4ToU32(0.32, 0.22, 0.16, 1.0))
   local changed, idx = reaper.ImGui_Combo(ctx, '##' .. label .. '_' .. pidx, cur, table.concat(items, '\0') .. '\0')
-  reaper.ImGui_PopStyleColor(ctx, 3)
+  reaper.ImGui_PopStyleColor(ctx, 4)
+  reaper.ImGui_PopStyleVar(ctx, 2)
   if changed then params.set_raw(track, fx, pidx, idx) end
 end
 
@@ -469,11 +494,15 @@ function panel.render(ctx, track, fx, ui, state)
   -- Header
   reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Text), reaper.ImGui_ColorConvertDouble4ToU32(0.95, 0.90, 0.86, 1.0))
   reaper.ImGui_Text(ctx, 'RM SATURATOR')
-  reaper.ImGui_SameLine(ctx)
-  reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Text), reaper.ImGui_ColorConvertDouble4ToU32(0.95, 0.90, 0.86, 0.70))
-  reaper.ImGui_Text(ctx, 'Analog drive')
   reaper.ImGui_PopStyleColor(ctx, 1)
-  reaper.ImGui_PopStyleColor(ctx, 1)
+  if reaper.ImGui_SameLine and reaper.ImGui_CalcTextSize then
+    local sub_w = select(1, reaper.ImGui_CalcTextSize(ctx, 'Analog drive')) or 0
+    reaper.ImGui_SameLine(ctx, 0, 0)
+    right_align(ctx, sub_w)
+    reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Text), reaper.ImGui_ColorConvertDouble4ToU32(0.95, 0.90, 0.86, 0.70))
+    reaper.ImGui_Text(ctx, 'Analog drive')
+    reaper.ImGui_PopStyleColor(ctx, 1)
+  end
 
   reaper.ImGui_Dummy(ctx, 1, 6 * scale)
 
@@ -483,43 +512,51 @@ function panel.render(ctx, track, fx, ui, state)
   reaper.ImGui_Dummy(ctx, 1, 10 * scale)
 
   -- Main 2 blocks
-  local content_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx))
   local gap = 14 * scale
-  local block_w = (content_w - gap) * 0.5
+  if begin_table(ctx, '##rm_sat_main', 2) then
+    reaper.ImGui_TableNextRow(ctx)
+    reaper.ImGui_TableSetColumnIndex(ctx, 0)
+    if begin_table(ctx, '##rm_sat_left', 2) then
+      reaper.ImGui_TableNextRow(ctx)
+      reaper.ImGui_TableSetColumnIndex(ctx, 0)
+      dial(ctx, track, fx, '##drive', 'DRIVE', P.drive, scale, fmt_db)
+      reaper.ImGui_TableSetColumnIndex(ctx, 1)
+      dial(ctx, track, fx, '##locut', 'LOCUT', P.locut, scale, fmt_hz)
 
-  -- Left block
-  reaper.ImGui_BeginChild(ctx, '##rm_sat_left', block_w, 0, 0, 0)
-  dial(ctx, track, fx, '##drive', 'DRIVE', P.drive, scale, fmt_db)
-  reaper.ImGui_SameLine(ctx, 0, 12 * scale)
-  dial(ctx, track, fx, '##locut', 'LOCUT', P.locut, scale, fmt_hz)
+      reaper.ImGui_TableNextRow(ctx)
+      reaper.ImGui_TableSetColumnIndex(ctx, 0)
+      dial(ctx, track, fx, '##tone', 'TONE', P.tone, scale, fmt_db)
+      reaper.ImGui_TableSetColumnIndex(ctx, 1)
+      reaper.ImGui_Dummy(ctx, 1, 1)
+      reaper.ImGui_EndTable(ctx)
+    end
 
-  reaper.ImGui_Dummy(ctx, 1, 8 * scale)
-  dial(ctx, track, fx, '##tone', 'TONE', P.tone, scale, fmt_db)
+    reaper.ImGui_Dummy(ctx, 1, 8 * scale)
+    local auto_on = bool_get(track, fx, P.auto)
+    local pun_on = bool_get(track, fx, P.punish)
+    local bw = 110 * scale
+    local bh = 28 * scale
+    if mini_toggle_button(ctx, 'AUTO', auto_on, bw, bh, scale) then bool_toggle(track, fx, P.auto) end
+    reaper.ImGui_SameLine(ctx, 0, 10 * scale)
+    if mini_toggle_button(ctx, 'PUNISH', pun_on, bw, bh, scale) then bool_toggle(track, fx, P.punish) end
 
-  -- Switch row
-  reaper.ImGui_Dummy(ctx, 1, 8 * scale)
-  local auto_on = bool_get(track, fx, P.auto)
-  local pun_on = bool_get(track, fx, P.punish)
-  local bw = 110 * scale
-  local bh = 28 * scale
-  if mini_toggle_button(ctx, 'AUTO', auto_on, bw, bh, scale) then bool_toggle(track, fx, P.auto) end
-  reaper.ImGui_SameLine(ctx, 0, 10 * scale)
-  if mini_toggle_button(ctx, 'PUNISH', pun_on, bw, bh, scale) then bool_toggle(track, fx, P.punish) end
-  reaper.ImGui_EndChild(ctx)
+    reaper.ImGui_TableSetColumnIndex(ctx, 1)
+    if begin_table(ctx, '##rm_sat_right', 2) then
+      reaper.ImGui_TableNextRow(ctx)
+      reaper.ImGui_TableSetColumnIndex(ctx, 0)
+      dial(ctx, track, fx, '##out', 'OUTPUT', P.out, scale, fmt_db)
+      reaper.ImGui_TableSetColumnIndex(ctx, 1)
+      dial(ctx, track, fx, '##hicut', 'HICUT', P.hicut, scale, fmt_hz)
 
-  reaper.ImGui_SameLine(ctx, 0, gap)
-
-  -- Right block
-  reaper.ImGui_BeginChild(ctx, '##rm_sat_right', block_w, 0, 0, 0)
-  dial(ctx, track, fx, '##out', 'OUTPUT', P.out, scale, fmt_db)
-  reaper.ImGui_SameLine(ctx, 0, 12 * scale)
-  dial(ctx, track, fx, '##hicut', 'HICUT', P.hicut, scale, fmt_hz)
-
-  reaper.ImGui_Dummy(ctx, 1, 8 * scale)
-  dial(ctx, track, fx, '##mix', 'MIX', P.mix, scale, fmt_mix)
-  reaper.ImGui_SameLine(ctx, 0, 12 * scale)
-  dial(ctx, track, fx, '##bias', 'BIAS', P.bias, scale, fmt_bias)
-  reaper.ImGui_EndChild(ctx)
+      reaper.ImGui_TableNextRow(ctx)
+      reaper.ImGui_TableSetColumnIndex(ctx, 0)
+      dial(ctx, track, fx, '##mix', 'MIX', P.mix, scale, fmt_mix)
+      reaper.ImGui_TableSetColumnIndex(ctx, 1)
+      dial(ctx, track, fx, '##bias', 'BIAS', P.bias, scale, fmt_bias)
+      reaper.ImGui_EndTable(ctx)
+    end
+    reaper.ImGui_EndTable(ctx)
+  end
 
   reaper.ImGui_Dummy(ctx, 1, 12 * scale)
 
