@@ -131,7 +131,7 @@ function panel.render(ctx, track, fx, ui, state)
 
   local function draw_card(title, w, h, fn)
     local x0, y0 = compat.get_cursor_screen_pos(ctx)
-    local bg = reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.14, 1.0)
+    local bg = reaper.ImGui_ColorConvertDouble4ToU32(0.10, 0.11, 0.13, 1.0)
     local bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.6)
     local title_col = reaper.ImGui_ColorConvertDouble4ToU32(0.88, 0.88, 0.90, 0.9)
     reaper.ImGui_DrawList_AddRectFilled(dl, x0, y0, x0 + w, y0 + h, bg, 10 * scale)
@@ -220,16 +220,6 @@ function panel.render(ctx, track, fx, ui, state)
   end)
   reaper.ImGui_EndGroup(ctx)
 
-  reaper.ImGui_Dummy(ctx, 1, 8 * scale)
-
-  local sc = params.get_norm(track, fx, P.sidechain)
-  local tr = params.get_norm(track, fx, P.trick)
-  local changed
-  changed, sc = ui.toggle(ctx, 'Sidechain', sc > 0.5, scale)
-  if changed then params.set_norm(track, fx, P.sidechain, sc and 1 or 0) end
-  reaper.ImGui_SameLine(ctx)
-  changed, tr = ui.toggle(ctx, 'Trick', tr > 0.5, scale)
-  if changed then params.set_norm(track, fx, P.trick, tr and 1 or 0) end
 end
 
 return panel
