@@ -1,0 +1,56 @@
+{
+  "eaf4d15dc14f1e952b6d52ece65a2ca4c3af8103": {
+    "projectId": "eaf4d15dc14f1e952b6d52ece65a2ca4c3af8103",
+    "projectName": "(ReaProject*)0x000000045E72F200",
+    "users": [
+      "main",
+      "mon1",
+      "mon2"
+    ],
+    "admin": "main",
+    "assignments": {
+      "main": {
+        "all": true,
+        "guids": []
+      },
+      "mon1": {
+        "all": false,
+        "guids": []
+      },
+      "mon2": {
+        "all": false,
+        "guids": []
+      }
+    },
+    "ui": {
+      "showColorFooter": true,
+      "footerIntensity": 0.35
+    },
+    "presets": {
+      "rm_ns": [
+        {
+          "id": "2e943c7f-28ba-4d22-a7f1-d735066e7ca6",
+          "name": "50/50",
+          "params": [
+            {
+              "index": 0,
+              "value": 0.5
+            },
+            {
+              "index": 1,
+              "value": 0.0
+            },
+            {
+              "index": 2,
+              "value": 1.0
+            },
+            {
+              "index": 3,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

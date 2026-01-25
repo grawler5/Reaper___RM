@@ -1,0 +1,250 @@
+// RM_PreAmp (based on Tukan PreAmp concept, simplified + telemetry)
+// Web UI uses its own skin; this JSFX focuses on audio + meters.
+
+desc:RM_PreAmp
+//tags: saturation preamp
+
+// Match original Tukān PreAmp: INPUT is 0..30 dB, default 0 dB.
+slider1:0<0,30,0.1>Input (dB)
+slider2:50<1,100,1>Tube (Drive %)
+slider3:0<-24,24,0.1>Wet (dB)
+slider4:1<0,1,1{Off,On}>Compensate
+slider5:25<20,250,5>Scope Size (ms)
+slider6:0<0,4,1{Off,50,80,160,300}>HPF
+slider7:0<-20,20,0.2>Low EQ (dB)
+slider8:0<-20,20,0.2>High EQ (dB)
+slider9:0<-12,12,0.1>Output (dB)
+slider10:0<0,1,1{Off,On}>Dist
+slider11:1<0,1,1{Off,On}>Pre On/Off
+
+// Telemetry (normalized 0..1)
+slider12:0<0,1,0.001>-Z Telemetry: In VU
+slider13:0<0,1,0.001>-Z Telemetry: In Peak
+slider14:0<0,1,0.001>-Z Telemetry: Out VU
+slider15:0<0,1,0.001>-Z Telemetry: Out Peak
+slider16:0<0,1,1>-Z Clip
+
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+ext_tail_size = -1;
+// JSFX/EEL2 doesn't support scientific notation (e.g. 1e-20).
+// Use exp(ln(1e-20)) instead.
+eps = exp(-46.051701859880914);
+
+// meter constants
+vu_int = exp(-1/(0.300*srate)); // 300ms integration
+pk_dec = exp(-1/(0.600*srate)); // peak decay
+env_dec = exp(-1/(0.060*srate)); // fast meter smoothing (60ms)
+
+in_rms=0; out_rms=0;
+in_pk=0;  out_pk=0;
+in_env=0; out_env=0;
+
+// biquad state (per channel)
+// HPF
+hpx1L=hpx2L=hpy1L=hpy2L=0;
+hpx1R=hpx2R=hpy1R=hpy2R=0;
+// Low shelf
+lsx1L=lsx2L=lsy1L=lsy2L=0;
+lsx1R=lsx2R=lsy1R=lsy2R=0;
+// High shelf
+hsx1L=hsx2L=hsy1L=hsy2L=0;
+hsx1R=hsx2R=hsy1R=hsy2R=0;
+
+function db2lin(db) ( exp(db*(log(10)/20)); );
+function lin2db(x) ( 20/log(10) * log(max(eps, x)); );
+
+function tanh_approx(x)
+(
+  // stable tanh approximation
+  x2 = x*x;
+  x*(27 + x2) / (27 + 9*x2);
+);
+
+function biquad(x, b0,b1,b2,a1,a2, x1,x2,y1,y2)
+(
+  y = b0*x + b1*x1 + b2*x2 - a1*y1 - a2*y2;
+  x2 = x1; x1 = x;
+  y2 = y1; y1 = y;
+  y;
+);
+
+function calc_hpf(fc)
+(
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  q = 0.70710678;
+  alpha = sw/(2*q);
+  b0 = (1+cw)/2;
+  b1 = -(1+cw);
+  b2 = (1+cw)/2;
+  a0 = 1+alpha;
+  a1 = -2*cw;
+  a2 = 1-alpha;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_lowshelf(fc, gain_db)
+(
+  A = sqrt(db2lin(gain_db));
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  S = 1; // shelf slope
+  alpha = sw/2*sqrt((A + 1/A)*(1/S - 1) + 2);
+  beta = 2*sqrt(A)*alpha;
+  b0 =    A*((A+1) - (A-1)*cw + beta);
+  b1 =  2*A*((A-1) - (A+1)*cw);
+  b2 =    A*((A+1) - (A-1)*cw - beta);
+  a0 =        (A+1) + (A-1)*cw + beta;
+  a1 =   -2*((A-1) + (A+1)*cw);
+  a2 =        (A+1) + (A-1)*cw - beta;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_highshelf(fc, gain_db)
+(
+  A = sqrt(db2lin(gain_db));
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  S = 1;
+  alpha = sw/2*sqrt((A + 1/A)*(1/S - 1) + 2);
+  beta = 2*sqrt(A)*alpha;
+  b0 =    A*((A+1) + (A-1)*cw + beta);
+  b1 = -2*A*((A-1) + (A+1)*cw);
+  b2 =    A*((A+1) + (A-1)*cw - beta);
+  a0 =        (A+1) - (A-1)*cw + beta;
+  a1 =    2*((A-1) - (A+1)*cw);
+  a2 =        (A+1) - (A-1)*cw - beta;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+@slider
+pre_on = slider11 >= 0.5;
+dist_on = slider10 >= 0.5;
+
+in_gain = db2lin(slider1);
+out_gain = db2lin(slider9);
+wet_gain = db2lin(slider3);
+
+// drive: 1..100% => about 1..8x
+// keep sane for JSFX
+_drive = 1 + (slider2/100)*7;
+
+// optional compensate (rough)
+comp_on = slider4 >= 0.5;
+// The original PreAmp keeps perceived level fairly stable.
+// Use a gentle compensation curve to avoid the default being much quieter.
+comp = comp_on ? (1 / (1 + (_drive-1)*0.035)) : 1;
+
+// HPF
+hpf_sel = slider6|0;
+hpf_fc = (hpf_sel==0) ? 0 : (hpf_sel==1?50:(hpf_sel==2?80:(hpf_sel==3?160:300)));
+
+hpf_fc > 0 ? (
+  calc_hpf(hpf_fc);
+  hp_b0=b0; hp_b1=b1; hp_b2=b2; hp_a1=a1; hp_a2=a2;
+) : (
+  hp_b0=1; hp_b1=0; hp_b2=0; hp_a1=0; hp_a2=0;
+);
+
+// shelves
+calc_lowshelf(120, slider7);
+ls_b0=b0; ls_b1=b1; ls_b2=b2; ls_a1=a1; ls_a2=a2;
+
+calc_highshelf(6500, slider8);
+hs_b0=b0; hs_b1=b1; hs_b2=b2; hs_a1=a1; hs_a2=a2;
+
+@sample
+inL = spl0;
+inR = spl1;
+
+// meters: input
+m_in = max(abs(inL), abs(inR));
+in_pk = max(m_in, in_pk*pk_dec);
+in_env = m_in + env_dec*(in_env - m_in);
+
+in_mono = 0.5*(inL+inR);
+in_rms = in_mono*in_mono + vu_int*(in_rms - in_mono*in_mono);
+
+pre_on ? (
+  xL = inL * in_gain;
+  xR = inR * in_gain;
+
+  // HPF
+  hpf_fc > 0 ? (
+    yL = biquad(xL, hp_b0,hp_b1,hp_b2,hp_a1,hp_a2, hpx1L,hpx2L,hpy1L,hpy2L);
+    hpx1L=x1; hpx2L=x2; hpy1L=y1; hpy2L=y2;
+
+    yR = biquad(xR, hp_b0,hp_b1,hp_b2,hp_a1,hp_a2, hpx1R,hpx2R,hpy1R,hpy2R);
+    hpx1R=x1; hpx2R=x2; hpy1R=y1; hpy2R=y2;
+  ) : (
+    yL = xL; yR = xR;
+  );
+
+  // shelves
+  zL = biquad(yL, ls_b0,ls_b1,ls_b2,ls_a1,ls_a2, lsx1L,lsx2L,lsy1L,lsy2L);
+  lsx1L=x1; lsx2L=x2; lsy1L=y1; lsy2L=y2;
+  zR = biquad(yR, ls_b0,ls_b1,ls_b2,ls_a1,ls_a2, lsx1R,lsx2R,lsy1R,lsy2R);
+  lsx1R=x1; lsx2R=x2; lsy1R=y1; lsy2R=y2;
+
+  wL = biquad(zL, hs_b0,hs_b1,hs_b2,hs_a1,hs_a2, hsx1L,hsx2L,hsy1L,hsy2L);
+  hsx1L=x1; hsx2L=x2; hsy1L=y1; hsy2L=y2;
+  wR = biquad(zR, hs_b0,hs_b1,hs_b2,hs_a1,hs_a2, hsx1R,hsx2R,hsy1R,hsy2R);
+  hsx1R=x1; hsx2R=x2; hsy1R=y1; hsy2R=y2;
+
+  // saturation
+  dist_on ? (
+    sL = tanh_approx(wL * _drive);
+    sR = tanh_approx(wR * _drive);
+  ) : (
+    sL = wL;
+    sR = wR;
+  );
+
+  outL = sL * comp * wet_gain * out_gain;
+  outR = sR * comp * wet_gain * out_gain;
+) : (
+  outL = inL;
+  outR = inR;
+);
+
+// meters: output
+m_out = max(abs(outL), abs(outR));
+out_pk = max(m_out, out_pk*pk_dec);
+out_env = m_out + env_dec*(out_env - m_out);
+
+out_mono = 0.5*(outL+outR);
+out_rms = out_mono*out_mono + vu_int*(out_rms - out_mono*out_mono);
+
+spl0 = outL;
+spl1 = outR;
+
+@block
+// map meters to 0..1. Use -60..+6 dB range.
+function vu_norm(x)
+(
+  // -60..0 dB -> 0..1 (0 dB fills the meter)
+  db = lin2db(sqrt(max(0,x)));
+  db < -60 ? db=-60;
+  db > 0 ? db=0;
+  (db + 60) / 60;
+);
+
+// Use fast peak envelope for the main bar so 0 dBFS fills the meter visually.
+slider12 = vu_norm(in_env*in_env);
+slider13 = vu_norm(in_pk*in_pk);
+slider14 = vu_norm(out_env*out_env);
+slider15 = vu_norm(out_pk*out_pk);
+// Clip latch: treat ~0 dBFS as clip (use a tiny margin to avoid denorm jitter).
+slider16 = (in_pk >= 0.98) || (out_pk >= 0.98) ? 1 : 0;
+
+slider_automate(slider12);
+slider_automate(slider13);
+slider_automate(slider14);
+slider_automate(slider15);
+slider_automate(slider16);

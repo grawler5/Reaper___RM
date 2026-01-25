@@ -1,0 +1,97 @@
+desc:RM_Limiter2
+
+slider1:0<-30,0,0.1>Threshold (dB)
+slider2:0<-30,0,0.1>Output (dB)
+slider3:100<1,1000,1>Release (ms)
+slider4:0<0,1,1{Off,On}>Maximizer (Link)
+
+slider16:0<0,1,0.0001>-Z Telemetry: In Peak
+slider17:0<0,1,0.0001>-Z Telemetry: Out Peak
+slider18:0<0,30,0.01>-Z Telemetry: Atten (dB)
+
+in_pin:L in
+in_pin:R in
+out_pin:L out
+out_pin:R out
+
+options:no_meter
+
+@init
+// JSFX doesn't provide tanh() in some hosts/versions. Provide a safe local version.
+function rm_tanh(x)
+local(e2x)
+(
+  x > 10 ? 1 :
+  x < -10 ? -1 :
+  (
+    e2x = exp(2*x);
+    (e2x - 1) / (e2x + 1);
+  );
+);
+
+dbc = 20/log(10);
+EPS = exp(-46.051701859880914);
+function db2ratio(d) ( 10^(d/20); );
+function ratio2db(r) ( log(max(EPS,abs(r)))*dbc; );
+// state
+g = 1.0;
+pkIn = 0; pkOut = 0;
+
+@slider
+// update coeffs
+thr_db = slider1; // 0..-30
+out_db = slider2; // 0..-30 (ceiling)
+rel_s = max(0.001, slider3/1000);
+alphaR = exp(-1 / (rel_s * srate));
+
+inGain = db2ratio(-thr_db);      // thr=-10 => +10dB gain
+ceiling = db2ratio(out_db);      // out=-1 => 0.891
+link = slider4 >= 0.5;
+
+@block
+// peak decay tuned to block rate (~120ms)
+tele_decay = exp(-1 / (0.12 * srate / max(1, samplesblock)));
+pkIn *= tele_decay;
+pkOut *= tele_decay;
+
+// write telemetry once per block
+slider16 = min(1, pkIn);
+slider17 = min(1, pkOut);
+
+// atten in dB (0..30)
+att_db = min(30, max(0, -ratio2db(g)));
+slider18 = att_db;
+
+@sample
+// apply threshold drive
+xL = spl0 * inGain;
+xR = spl1 * inGain;
+
+// input peak (post-threshold drive)
+lvlIn = max(abs(xL), abs(xR));
+pkIn = max(pkIn, min(1, lvlIn));
+
+// target gain to not exceed ceiling
+target = (lvlIn > ceiling) ? (ceiling / max(EPS, lvlIn)) : 1.0;
+
+// fast attack, slow release
+g = (target < g) ? target : (alphaR*g + (1-alphaR)*target);
+
+// apply gain
+yL = xL * g;
+yR = xR * g;
+
+// optional maximizer softclip (kept under ceiling)
+link ? (
+  // normalize by ceiling so clip point stays consistent
+  yL = rm_tanh(yL / max(EPS, ceiling)) * ceiling;
+  yR = rm_tanh(yR / max(EPS, ceiling)) * ceiling;
+) : 0;
+
+// output
+spl0 = yL;
+spl1 = yR;
+
+// output peak
+lvlOut = max(abs(yL), abs(yR));
+pkOut = max(pkOut, min(1, lvlOut));

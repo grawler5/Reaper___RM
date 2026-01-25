@@ -1,0 +1,96 @@
+// RM Gate (based on Tukan ExpGate2 concept, simplified to Gate only)
+// Minimal controls: Threshold / Attack / Release / Range
+// Telemetry: gate closure (0..1) and attenuation (dB)
+
+desc:RM_Gate
+//tags: dynamics gate
+
+slider1:-35<-80,0,0.1>Threshold (dB)
+slider2:5<0.1,50,0.1>Attack (ms)
+slider3:120<5,1000,1>Release (ms)
+slider4:60<0,80,0.1>Range (dB)
+
+// Telemetry (read-only)
+slider5:0<0,1,0.001>-Z Telemetry: Gate Closure
+slider6:0<0,80,0.01>-Z Telemetry: Attenuation (dB)
+slider7:0<0,1,0.0001>-Z Telemetry: In Peak (L)
+slider8:0<0,1,0.0001>-Z Telemetry: In Peak (R)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+ext_tail_size = -1;
+// JSFX/EEL2 doesn't support scientific notation (e.g. 1e-20).
+// Use exp(ln(1e-20)) instead.
+eps = exp(-46.051701859880914);
+
+// detector smoothing
+rmscoef = exp(-1/(0.010*srate)); // 10ms
+runave = 0;
+
+gain = 1;
+
+pkL = 0;
+pkR = 0;
+
+@slider
+thresh_db = slider1;
+thresh_lin = exp(thresh_db * (log(10)/20));
+
+att_s = max(0.00001, slider2/1000);
+rel_s = max(0.00001, slider3/1000);
+attcoef = exp(-1/(att_s*srate));
+relcoef = exp(-1/(rel_s*srate));
+
+range_db = max(0, slider4);
+closed_gain = exp(-range_db * (log(10)/20));
+
+@sample
+// capture input peaks (pre-gate)
+aL = abs(spl0);
+aR = abs(spl1);
+pkL = max(pkL, aL);
+pkR = max(pkR, aR);
+
+// mono detector (RMS-ish)
+x = 0.5*(spl0 + spl1);
+ax = abs(x);
+ax2 = ax*ax;
+runave = ax2 + rmscoef*(runave-ax2);
+det = sqrt(max(0, runave));
+
+// target gain
+(det + eps) >= thresh_lin ? tgt = 1 : tgt = closed_gain;
+
+// smooth
+(tgt > gain) ? (gain = tgt + attcoef*(gain - tgt);) : (gain = tgt + relcoef*(gain - tgt););
+
+spl0 *= gain;
+spl1 *= gain;
+
+@block
+// telemetry update ~ at block rate
+att_db = -log(max(eps, gain)) * (20/log(10));
+att_db < 0 ? att_db = 0;
+
+// closure: 0=open, 1=fully closed
+cl = (range_db <= 0.0001) ? 0 : (att_db / range_db);
+cl = max(0, min(1, cl));
+
+slider5 = cl;
+slider6 = att_db;
+
+slider7 = pkL;
+slider8 = pkR;
+
+pkL = 0;
+pkR = 0;
+
+// notify host (use per-slider API, avoids huge bitmasks)
+slider_automate(slider5);
+slider_automate(slider6);
+slider_automate(slider7);
+slider_automate(slider8);

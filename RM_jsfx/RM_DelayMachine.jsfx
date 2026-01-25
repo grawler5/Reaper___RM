@@ -1,0 +1,203 @@
+// License: GPL - http://www.gnu.org/licenses/gpl.html
+desc:RM_DelayMachine
+
+slider1:100<0,3000,1>Delay (ms)
+slider2:-5<-40,0,1>Feedback (dB)
+slider3:0<-120,6,1>Mix In (dB)
+slider4:0.5<0,1,0.01>Mix dry/Wet
+slider5:0<-120,6,1>none (dB)
+slider6:0<0,100,1>Ping-Pong Width (%)
+slider7:0.25<0.0625,4,0.0625>Tempo Sync (fraction of whole note)
+slider8:0<0,100,.1>Distortion (%)
+slider9:0<0,1,1>-Tape
+slider10:0<0,5,1>-TimeSig
+slider11:0<0,2,1>-TimeSpec
+slider12:0<0,1000,10>-HPF
+slider13:22000<1000,22000,100>-LPF (DON'T automate, use slider14!)
+slider14:14.2877123<9.96,14.2877123,0.01>-LPF Log
+slider15:0<0,1,1>-Crush
+slider16:0<0,2,1>-Start Pong
+slider17:1<0,6,.01>-Scaling
+slider18:120<0,300,0.1>Telemetry BPM
+slider19:0<0,1,1>-Bypass
+slider20:100<0,100,1>-Wet
+slider21:0<0,1,1>-Delta
+
+
+import delay-utils.jsfx-inc
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+  // delay lines
+  max_samps = min(3000 * srate / 1000, 500000);
+  freemem = 0;
+  freemem = dL.delay_init(freemem, max_samps+64);
+  freemem = dR.delay_init(freemem, max_samps+64);
+
+  // filter state
+  hpf_zL = hpf_zR = 0;
+  lpf_zL = lpf_zR = 0;
+
+  crush_hold = 0;
+  crush_phase = 0;
+  crush_lastL = crush_lastR = 0;
+
+@slider
+  // keep LPF freq coherent with log slider
+  slider13 = 2^slider14;
+  slider13 < 1000 ? slider13 = 1000;
+  slider13 > 22000 ? slider13 = 22000;
+
+@sample
+  dryInL = spl0; dryInR = spl1;
+  // --- tempo telemetry (project BPM)
+  pr = play_rate;
+  pr <= 0 ? pr = 1;
+  slider18 = tempo / pr;
+
+  // --- sync: TimeSig/TimeSpec override delay time
+  // TimeSig: 0 = free; 1..5 = whole, half, quarter, eighth, sixteenth
+  dms = slider1;
+  ts = slider10|0;
+  ts > 0 ? (
+    bpm = max(1, tempo);
+    // base factors in seconds: 240/bpm (whole), 120/bpm (half), 60/bpm (quarter), 30/bpm (eighth), 15/bpm (sixteenth)
+    ts == 1 ? base = 240 :
+    ts == 2 ? base = 120 :
+    ts == 3 ? base = 60  :
+    ts == 4 ? base = 30  :
+    ts == 5 ? base = 15  : base = 60;
+    dms = 1000 * (base / bpm);
+
+    // TimeSpec: 0 none, 1 triplet, 2 dotted
+    sp = slider11|0;
+    sp == 1 ? dms *= (2/3) :
+    sp == 2 ? dms *= 1.5;
+  );
+
+  dms < 0 ? dms = 0;
+  dms > 3000 ? dms = 3000;
+
+  ds = dms * srate / 1000;  ds < 1 ? ds = 1;
+
+  // --- gains
+  fb  = 10^(slider2/20);
+  fb > 0.999 ? fb = 0.999;
+  wetG = 10^(slider3/20);
+  mix  = slider4;
+  mix < 0 ? mix=0;
+  mix > 1 ? mix=1;
+  dryG = 1 - mix;
+
+  // --- ping-pong
+  ppw = slider6/100;
+  ppw < 0 ? ppw=0;
+  ppw > 1 ? ppw=1;
+
+  start = slider16|0; // 0 off (stereo), 1 left, 2 right
+  pp_on = start != 0;
+
+  // --- filters coeffs (simple 1-pole)
+  // HPF
+  hpf_hz = slider12;
+  hpf_a = 0;
+  hpf_hz > 0 ? (
+    hpf_a = exp(-2*$pi*hpf_hz/srate);
+  );
+  // LPF
+  lpf_hz = slider13;
+  lpf_a = exp(-2*$pi*lpf_hz/srate);
+
+  // --- read current delayed output
+  dl = dL.delay_output_linear1(ds);
+  dr = dR.delay_output_linear1(ds);
+
+  // --- optional ping-pong crossfeed in feedback
+  // ppw=0 => normal, ppw=1 => fully crossed
+  fbL = pp_on ? (dl*(1-ppw) + dr*ppw) : dl;
+  fbR = pp_on ? (dr*(1-ppw) + dl*ppw) : dr;
+
+  // --- input to delay lines: include feedback + optionally start-side routing
+  inL = spl0;
+  inR = spl1;
+
+  // Route input when pp_on:
+  pp_on ? (
+    start == 1 ? (srcL = (inL+inR)*0.5; srcR = 0;) :
+    start == 2 ? (srcL = 0; srcR = (inL+inR)*0.5;) :
+                 (srcL = inL; srcR = inR;);
+  ) : (
+    srcL = inL;
+    srcR = inR;
+  );
+
+  // mix-in gain affects what enters delay (like send level)
+  srcL *= wetG;
+  srcR *= wetG;
+
+  // --- distortion / tape
+  drive = slider8/100;
+  tape = slider9|0;
+  tape ? drive *= 1.5;
+
+  drive > 0 ? (
+    k = 1 + drive*6;
+    x = srcL*k;  srcL = (x/(1+abs(x))) / (k/(1+k));
+    x = srcR*k;  srcR = (x/(1+abs(x))) / (k/(1+k));
+  );
+
+  // --- crush (very simple downsample+quant)
+  slider15 > 0 ? (
+    // downsample factor derived from delay time: longer delay => softer crush
+    step = 6 + floor(dms/400);
+    step < 6 ? step=6;
+    step > 20 ? step=20;
+
+    crush_phase += 1;
+    crush_phase >= step ? (crush_phase = 0; crush_lastL = srcL; crush_lastR = srcR;);
+    srcL = crush_lastL;
+    srcR = crush_lastR;
+
+    // bit depth ~8..5
+    bits = 8 - floor(drive*3);
+    bits < 5 ? bits=5;
+    q = 2^bits;
+    srcL = floor(srcL*q)/q;
+    srcR = floor(srcR*q)/q;
+  );
+
+  // --- apply HPF then LPF on wet input (simple)
+  hpf_hz > 0 ? (
+    // one-pole HPF via lowpass subtraction
+    hpf_zL = (1-hpf_a)*srcL + hpf_a*hpf_zL;
+    hpf_zR = (1-hpf_a)*srcR + hpf_a*hpf_zR;
+    srcL = srcL - hpf_zL;
+    srcR = srcR - hpf_zR;
+  );
+
+  lpf_zL = (1-lpf_a)*srcL + lpf_a*lpf_zL;
+  lpf_zR = (1-lpf_a)*srcR + lpf_a*lpf_zR;
+  srcL = lpf_zL;
+  srcR = lpf_zR;
+
+  // --- write into delay lines with feedback
+  dL.delay_input(srcL + fbL*fb);
+  dR.delay_input(srcR + fbR*fb);
+
+  // --- wet output is current delay outputs (pre-feedback)
+  wetL = dl;
+  wetR = dr;
+
+  // --- output mix
+  wetOutG = slider20/100; wetOutG < 0 ? wetOutG=0; wetOutG > 1 ? wetOutG=1;
+  outL = inL*dryG + wetL*mix*wetOutG;
+  outR = inR*dryG + wetR*mix*wetOutG;
+  bypass = slider19|0;
+  delta  = slider21|0;
+  bypass ? (spl0 = dryInL; spl1 = dryInR;) : (
+    delta ? (spl0 = outL - dryInL; spl1 = outR - dryInR;) : (spl0 = outL; spl1 = outR;)
+  );

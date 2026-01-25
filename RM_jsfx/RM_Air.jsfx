@@ -1,0 +1,355 @@
+desc: RM_Air
+tags: exciter, air, high shelf, brightness
+
+slider1:0<0,100,0.1>Mid Air (0..100)
+slider2:0<0,100,0.1>High Air (0..100)
+slider3:0<-24,24,0.1>Trim (dB)
+slider4:1<0,1,1{1x,2x}>Oversample (nonlinear)
+
+// ------------------------------------------------------------
+// ИДЕЯ:
+// 1) Линейная часть (EQ-кривая), чтобы в анализаторе было похоже:
+//    - Mid Air: high-shelf (мягче), максимум ~ +8 dB
+//    - High Air: high-shelf (очень сильный), максимум ~ +24 dB
+//    - High Air также включает dip (bell cut) ~ -7 dB около 4.5 kHz
+// 2) Нелинейная часть (гармоники): сатурация только верхних полос,
+//    подмешиваем обратно к сигналу.
+// ------------------------------------------------------------
+
+in_pin:left
+in_pin:right
+out_pin:left
+out_pin:right
+
+@init
+two_pi = 2*$pi;
+
+// --- biquad states (transposed DF2): z1,z2 per filter per channel
+dip_z1L=0; dip_z2L=0; dip_z1R=0; dip_z2R=0;
+mid_z1L=0; mid_z2L=0; mid_z1R=0; mid_z2R=0;
+hi_z1L=0;  hi_z2L=0;  hi_z1R=0;  hi_z2R=0;
+
+// --- band-extract states (one-pole cascades)
+// Mid band (HP -> LP), 2 poles each
+m_hp1L=0; m_hp2L=0; m_lp1L=0; m_lp2L=0;
+m_hp1R=0; m_hp2R=0; m_lp1R=0; m_lp2R=0;
+
+// High band (HP -> LP), 2 poles each
+h_hp1L=0; h_hp2L=0; h_lp1L=0; h_lp2L=0;
+h_hp1R=0; h_hp2R=0; h_lp1R=0; h_lp2R=0;
+
+// optional extra HP on harmonic component (1 pole)
+mh_hpL=0; mh_hpR=0;
+hh_hpL=0; hh_hpR=0;
+
+// prev band samples for 2x "pseudo-oversample"
+m_prevL=0; m_prevR=0;
+h_prevL=0; h_prevR=0;
+
+@slider
+mid_amt  = slider1/100;
+high_amt = slider2/100;
+
+trim_lin = pow(10, slider3/20);
+os2x = slider4; // 0 = 1x, 1 = 2x
+
+// ---------- TWEAK ZONE (если захочешь подогнать под себя/под твой анализатор) ----------
+mid_shelf_fc = 8000;     // Mid Air shelf corner
+mid_shelf_max_db = 8;    // Mid Air max boost
+
+hi_shelf_fc  = 12000;    // High Air shelf corner
+hi_shelf_max_db = 24;    // High Air max boost
+
+dip_fc = 4500;           // High Air "harshness dip" center
+dip_q  = 0.70;
+dip_max_db = -7;         // max cut at High Air=100
+
+// Нелинейная часть: полосы для гармоник
+mid_hp_fc = 2500;
+mid_lp_fc = 10000;
+
+hi_hp_fc  = 8000;
+hi_lp_fc  = 18000;
+// --------------------------------------------------------------------------------------
+
+// clamp freq vs sample rate
+nyq = 0.49*srate;
+
+mid_shelf_fc = min(mid_shelf_fc, nyq);
+hi_shelf_fc  = min(hi_shelf_fc,  nyq);
+dip_fc       = min(dip_fc,       nyq);
+
+mid_hp_fc    = min(mid_hp_fc,    nyq);
+mid_lp_fc    = min(mid_lp_fc,    nyq);
+
+hi_hp_fc     = min(hi_hp_fc,     nyq);
+hi_lp_fc     = min(hi_lp_fc,     nyq);
+
+// --- map EQ gains (linear)
+mid_gain_db = mid_shelf_max_db * mid_amt;
+hi_gain_db  = hi_shelf_max_db  * high_amt;
+dip_gain_db = dip_max_db       * high_amt; // negative
+
+// --- nonlinear mapping (more gentle at low settings)
+mid_nl = mid_amt*mid_amt;
+hi_nl  = high_amt*high_amt;
+
+mix_mid  = 0.35 * mid_nl;     // harmonic mix
+mix_hi   = 0.55 * hi_nl;
+
+drive_mid = 1 + 5*mid_nl;     // saturation drive
+drive_hi  = 1 + 9*hi_nl;
+
+// slight asymmetry bias to get a bit of even harmonics (subtle)
+bias = 0.02*(mid_amt + high_amt);
+bias_abs = abs(bias);
+bias_base = bias/(1+bias_abs);
+bias_comp = 1+bias_abs;
+
+// ---------- biquad coeffs calc (RBJ cookbook) ----------
+
+// 1) DIP peaking EQ (only meaningful when High Air > 0)
+abs(dip_gain_db) < 0.0001 ? (
+  dip_b0=1; dip_b1=0; dip_b2=0; dip_a1=0; dip_a2=0;
+) : (
+  A = pow(10, dip_gain_db/40);
+  w0 = two_pi*dip_fc/srate;
+  cosw = cos(w0); sinw = sin(w0);
+  alpha = sinw/(2*dip_q);
+
+  b0 = 1 + alpha*A;
+  b1 = -2*cosw;
+  b2 = 1 - alpha*A;
+  a0 = 1 + alpha/A;
+  a1 = -2*cosw;
+  a2 = 1 - alpha/A;
+
+  inva0 = 1/a0;
+  dip_b0 = b0*inva0; dip_b1=b1*inva0; dip_b2=b2*inva0;
+  dip_a1 = a1*inva0; dip_a2=a2*inva0;
+);
+
+// 2) MID high-shelf
+abs(mid_gain_db) < 0.0001 ? (
+  mid_b0=1; mid_b1=0; mid_b2=0; mid_a1=0; mid_a2=0;
+) : (
+  A = pow(10, mid_gain_db/40);
+  w0 = two_pi*mid_shelf_fc/srate;
+  cosw = cos(w0); sinw = sin(w0);
+
+  // shelf slope S=1
+  S = 1;
+  alpha = sinw/2 * sqrt((A+1/A)*(1/S-1) + 2);
+  sqrtA = sqrt(A);
+
+  b0 =    A*((A+1)+(A-1)*cosw + 2*sqrtA*alpha);
+  b1 = -2*A*((A-1)+(A+1)*cosw);
+  b2 =    A*((A+1)+(A-1)*cosw - 2*sqrtA*alpha);
+  a0 =        (A+1)-(A-1)*cosw + 2*sqrtA*alpha;
+  a1 =  2*((A-1)-(A+1)*cosw);
+  a2 =        (A+1)-(A-1)*cosw - 2*sqrtA*alpha;
+
+  inva0 = 1/a0;
+  mid_b0 = b0*inva0; mid_b1=b1*inva0; mid_b2=b2*inva0;
+  mid_a1 = a1*inva0; mid_a2=a2*inva0;
+);
+
+// 3) HIGH high-shelf
+abs(hi_gain_db) < 0.0001 ? (
+  hi_b0=1; hi_b1=0; hi_b2=0; hi_a1=0; hi_a2=0;
+) : (
+  A = pow(10, hi_gain_db/40);
+  w0 = two_pi*hi_shelf_fc/srate;
+  cosw = cos(w0); sinw = sin(w0);
+
+  S = 1;
+  alpha = sinw/2 * sqrt((A+1/A)*(1/S-1) + 2);
+  sqrtA = sqrt(A);
+
+  b0 =    A*((A+1)+(A-1)*cosw + 2*sqrtA*alpha);
+  b1 = -2*A*((A-1)+(A+1)*cosw);
+  b2 =    A*((A+1)+(A-1)*cosw - 2*sqrtA*alpha);
+  a0 =        (A+1)-(A-1)*cosw + 2*sqrtA*alpha;
+  a1 =  2*((A-1)-(A+1)*cosw);
+  a2 =        (A+1)-(A-1)*cosw - 2*sqrtA*alpha;
+
+  inva0 = 1/a0;
+  hi_b0 = b0*inva0; hi_b1=b1*inva0; hi_b2=b2*inva0;
+  hi_a1 = a1*inva0; hi_a2=a2*inva0;
+);
+
+// ---------- one-pole coefficients for band extraction ----------
+m_hp_a = exp(-two_pi*mid_hp_fc/srate);
+m_lp_a = exp(-two_pi*mid_lp_fc/srate);
+
+h_hp_a = exp(-two_pi*hi_hp_fc/srate);
+h_lp_a = exp(-two_pi*hi_lp_fc/srate);
+
+// for extra HP on harmonic component (same corners)
+mh_hp_a = m_hp_a;
+hh_hp_a = h_hp_a;
+
+@sample
+inL = spl0;
+inR = spl1;
+
+// ------------------- LINEAR (EQ) PART -------------------
+yL = inL;
+yR = inR;
+
+// dip
+x = yL;
+y = dip_b0*x + dip_z1L;
+dip_z1L = dip_b1*x + dip_z2L - dip_a1*y;
+dip_z2L = dip_b2*x - dip_a2*y;
+yL = y;
+
+x = yR;
+y = dip_b0*x + dip_z1R;
+dip_z1R = dip_b1*x + dip_z2R - dip_a1*y;
+dip_z2R = dip_b2*x - dip_a2*y;
+yR = y;
+
+// mid shelf
+x = yL;
+y = mid_b0*x + mid_z1L;
+mid_z1L = mid_b1*x + mid_z2L - mid_a1*y;
+mid_z2L = mid_b2*x - mid_a2*y;
+yL = y;
+
+x = yR;
+y = mid_b0*x + mid_z1R;
+mid_z1R = mid_b1*x + mid_z2R - mid_a1*y;
+mid_z2R = mid_b2*x - mid_a2*y;
+yR = y;
+
+// high shelf
+x = yL;
+y = hi_b0*x + hi_z1L;
+hi_z1L = hi_b1*x + hi_z2L - hi_a1*y;
+hi_z2L = hi_b2*x - hi_a2*y;
+yL = y;
+
+x = yR;
+y = hi_b0*x + hi_z1R;
+hi_z1R = hi_b1*x + hi_z2R - hi_a1*y;
+hi_z2R = hi_b2*x - hi_a2*y;
+yR = y;
+
+// ------------------- NONLINEAR (EXCITER) PART -------------------
+// Helper inline: soft-sat (softsign), with tiny asymmetry bias.
+// sat(x,drive): t=drive*x+bias; y=t/(1+abs(t)); y-=bias_base; y*=bias_comp/drive;
+
+//// MID BAND EXTRACT (L)
+m = inL;
+// 2-pole HP
+lp = (1-m_hp_a)*m + m_hp_a*m_hp1L; m_hp1L=lp; m = m - lp;
+lp = (1-m_hp_a)*m + m_hp_a*m_hp2L; m_hp2L=lp; m = m - lp;
+// 2-pole LP
+lp = (1-m_lp_a)*m + m_lp_a*m_lp1L; m_lp1L=lp; m = lp;
+lp = (1-m_lp_a)*m + m_lp_a*m_lp2L; m_lp2L=lp; m = lp;
+m_bandL = m;
+
+//// MID BAND EXTRACT (R)
+m = inR;
+lp = (1-m_hp_a)*m + m_hp_a*m_hp1R; m_hp1R=lp; m = m - lp;
+lp = (1-m_hp_a)*m + m_hp_a*m_hp2R; m_hp2R=lp; m = m - lp;
+lp = (1-m_lp_a)*m + m_lp_a*m_lp1R; m_lp1R=lp; m = lp;
+lp = (1-m_lp_a)*m + m_lp_a*m_lp2R; m_lp2R=lp; m = lp;
+m_bandR = m;
+
+//// HIGH BAND EXTRACT (L)
+h = inL;
+lp = (1-h_hp_a)*h + h_hp_a*h_hp1L; h_hp1L=lp; h = h - lp;
+lp = (1-h_hp_a)*h + h_hp_a*h_hp2L; h_hp2L=lp; h = h - lp;
+// LP to avoid super-ultra junk/alias
+lp = (1-h_lp_a)*h + h_lp_a*h_lp1L; h_lp1L=lp; h = lp;
+lp = (1-h_lp_a)*h + h_lp_a*h_lp2L; h_lp2L=lp; h = lp;
+h_bandL = h;
+
+//// HIGH BAND EXTRACT (R)
+h = inR;
+lp = (1-h_hp_a)*h + h_hp_a*h_hp1R; h_hp1R=lp; h = h - lp;
+lp = (1-h_hp_a)*h + h_hp_a*h_hp2R; h_hp2R=lp; h = h - lp;
+lp = (1-h_lp_a)*h + h_lp_a*h_lp1R; h_lp1R=lp; h = lp;
+lp = (1-h_lp_a)*h + h_lp_a*h_lp2R; h_lp2R=lp; h = lp;
+h_bandR = h;
+
+// ----- SAT + harmonic extract, optional 2x pseudo-oversample -----
+os2x ? (
+  // MID L
+  xh = 0.5*(m_prevL + m_bandL);
+  t = drive_mid*xh + bias;  sat0 = t/(1+abs(t)); sat0 -= bias_base; sat0 *= bias_comp/drive_mid;
+  harm0 = sat0 - xh;
+
+  t = drive_mid*m_bandL + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_mid;
+  harm1 = sat1 - m_bandL;
+
+  harm_mL = 0.5*(harm0 + harm1);
+
+  // MID R
+  xh = 0.5*(m_prevR + m_bandR);
+  t = drive_mid*xh + bias;  sat0 = t/(1+abs(t)); sat0 -= bias_base; sat0 *= bias_comp/drive_mid;
+  harm0 = sat0 - xh;
+
+  t = drive_mid*m_bandR + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_mid;
+  harm1 = sat1 - m_bandR;
+
+  harm_mR = 0.5*(harm0 + harm1);
+
+  // HIGH L
+  xh = 0.5*(h_prevL + h_bandL);
+  t = drive_hi*xh + bias;  sat0 = t/(1+abs(t)); sat0 -= bias_base; sat0 *= bias_comp/drive_hi;
+  harm0 = sat0 - xh;
+
+  t = drive_hi*h_bandL + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_hi;
+  harm1 = sat1 - h_bandL;
+
+  harm_hL = 0.5*(harm0 + harm1);
+
+  // HIGH R
+  xh = 0.5*(h_prevR + h_bandR);
+  t = drive_hi*xh + bias;  sat0 = t/(1+abs(t)); sat0 -= bias_base; sat0 *= bias_comp/drive_hi;
+  harm0 = sat0 - xh;
+
+  t = drive_hi*h_bandR + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_hi;
+  harm1 = sat1 - h_bandR;
+
+  harm_hR = 0.5*(harm0 + harm1);
+) : (
+  // MID L/R
+  t = drive_mid*m_bandL + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_mid;
+  harm_mL = sat1 - m_bandL;
+
+  t = drive_mid*m_bandR + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_mid;
+  harm_mR = sat1 - m_bandR;
+
+  // HIGH L/R
+  t = drive_hi*h_bandL + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_hi;
+  harm_hL = sat1 - h_bandL;
+
+  t = drive_hi*h_bandR + bias; sat1 = t/(1+abs(t)); sat1 -= bias_base; sat1 *= bias_comp/drive_hi;
+  harm_hR = sat1 - h_bandR;
+);
+
+// extra gentle HP on harmonic component to avoid any low intermod coming through
+lp = (1-mh_hp_a)*harm_mL + mh_hp_a*mh_hpL; mh_hpL=lp; harm_mL = harm_mL - lp;
+lp = (1-mh_hp_a)*harm_mR + mh_hp_a*mh_hpR; mh_hpR=lp; harm_mR = harm_mR - lp;
+
+lp = (1-hh_hp_a)*harm_hL + hh_hp_a*hh_hpL; hh_hpL=lp; harm_hL = harm_hL - lp;
+lp = (1-hh_hp_a)*harm_hR + hh_hp_a*hh_hpR; hh_hpR=lp; harm_hR = harm_hR - lp;
+
+// mix back
+outL = yL + mix_mid*harm_mL + mix_hi*harm_hL;
+outR = yR + mix_mid*harm_mR + mix_hi*harm_hR;
+
+// trim
+outL *= trim_lin;
+outR *= trim_lin;
+
+// store prev bands for oversample
+m_prevL = m_bandL; m_prevR = m_bandR;
+h_prevL = h_bandL; h_prevR = h_bandR;
+
+spl0 = outL;
+spl1 = outR;

@@ -1,0 +1,682 @@
+// RM_EQ2 - 20 band parametric EQ + LoCut/HiCut + Spectrum telemetry
+// Inspired by RBJ EQ Cookbook / Stillwell RBJ 4-Band EQ.
+// Web UI provides Pro-Q style editor.
+
+desc:RM_EQ2
+//tags: equalizer parametric spectrum
+
+slider1:0<0,1,1{Off,On}>LoCut
+// NOTE: ranges are 20..20000 so the web UI can place points anywhere on the graph
+slider2:80<20,20000,1>LoCut Freq (Hz)
+slider3:0<0,1,1{Off,On}>HiCut
+slider4:12000<20,20000,1>HiCut Freq (Hz)
+
+slider5:0<0,1,1{Off,On}>B1 On
+slider6:120<20,20000,1>B1 Freq (Hz)
+slider7:0<-18,18,0.1>B1 Gain (dB)
+slider8:0.70<0.20,10.00,0.01>B1 Q
+
+slider9:0<0,1,1{Off,On}>B2 On
+slider10:500<20,20000,1>B2 Freq (Hz)
+slider11:0<-18,18,0.1>B2 Gain (dB)
+slider12:0.70<0.20,10.00,0.01>B2 Q
+
+slider13:0<0,1,1{Off,On}>B3 On
+slider14:2000<20,20000,1>B3 Freq (Hz)
+slider15:0<-18,18,0.1>B3 Gain (dB)
+slider16:0.70<0.20,10.00,0.01>B3 Q
+
+slider17:0<0,1,1{Off,On}>B4 On
+slider18:8000<20,20000,1>B4 Freq (Hz)
+slider19:0<-18,18,0.1>B4 Gain (dB)
+slider20:0.70<0.20,10.00,0.01>B4 Q
+
+slider21:0<0,1,1{Off,On}>B5 On
+slider22:1000<20,20000,1>B5 Freq (Hz)
+slider23:0<-18,18,0.1>B5 Gain (dB)
+slider24:0.70<0.20,10.00,0.01>B5 Q
+
+slider25:0<0,1,1{Off,On}>B6 On
+slider26:1000<20,20000,1>B6 Freq (Hz)
+slider27:0<-18,18,0.1>B6 Gain (dB)
+slider28:0.70<0.20,10.00,0.01>B6 Q
+
+slider29:0<0,1,1{Off,On}>B7 On
+slider30:1000<20,20000,1>B7 Freq (Hz)
+slider31:0<-18,18,0.1>B7 Gain (dB)
+slider32:0.70<0.20,10.00,0.01>B7 Q
+
+slider33:0<0,1,1{Off,On}>B8 On
+slider34:1000<20,20000,1>B8 Freq (Hz)
+slider35:0<-18,18,0.1>B8 Gain (dB)
+slider36:0.70<0.20,10.00,0.01>B8 Q
+
+slider37:0<0,1,1{Off,On}>B9 On
+slider38:1000<20,20000,1>B9 Freq (Hz)
+slider39:0<-18,18,0.1>B9 Gain (dB)
+slider40:0.70<0.20,10.00,0.01>B9 Q
+
+slider41:0<0,1,1{Off,On}>B10 On
+slider42:1000<20,20000,1>B10 Freq (Hz)
+slider43:0<-18,18,0.1>B10 Gain (dB)
+slider44:0.70<0.20,10.00,0.01>B10 Q
+
+slider45:0<0,1,1{Off,On}>B11 On
+slider46:1000<20,20000,1>B11 Freq (Hz)
+slider47:0<-18,18,0.1>B11 Gain (dB)
+slider48:0.70<0.20,10.00,0.01>B11 Q
+
+slider49:0<0,1,1{Off,On}>B12 On
+slider50:1000<20,20000,1>B12 Freq (Hz)
+slider51:0<-18,18,0.1>B12 Gain (dB)
+slider52:0.70<0.20,10.00,0.01>B12 Q
+
+slider53:0<0,1,1{Off,On}>B13 On
+slider54:1000<20,20000,1>B13 Freq (Hz)
+slider55:0<-18,18,0.1>B13 Gain (dB)
+slider56:0.70<0.20,10.00,0.01>B13 Q
+
+slider57:0<0,1,1{Off,On}>B14 On
+slider58:1000<20,20000,1>B14 Freq (Hz)
+slider59:0<-18,18,0.1>B14 Gain (dB)
+slider60:0.70<0.20,10.00,0.01>B14 Q
+
+slider61:0<0,1,1{Off,On}>B15 On
+slider62:1000<20,20000,1>B15 Freq (Hz)
+slider63:0<-18,18,0.1>B15 Gain (dB)
+slider64:0.70<0.20,10.00,0.01>B15 Q
+
+slider65:0<0,1,1{Off,On}>B16 On
+slider66:1000<20,20000,1>B16 Freq (Hz)
+slider67:0<-18,18,0.1>B16 Gain (dB)
+slider68:0.70<0.20,10.00,0.01>B16 Q
+
+slider69:0<0,1,1{Off,On}>B17 On
+slider70:1000<20,20000,1>B17 Freq (Hz)
+slider71:0<-18,18,0.1>B17 Gain (dB)
+slider72:0.70<0.20,10.00,0.01>B17 Q
+
+slider73:0<0,1,1{Off,On}>B18 On
+slider74:1000<20,20000,1>B18 Freq (Hz)
+slider75:0<-18,18,0.1>B18 Gain (dB)
+slider76:0.70<0.20,10.00,0.01>B18 Q
+
+slider77:0<0,1,1{Off,On}>B19 On
+slider78:1000<20,20000,1>B19 Freq (Hz)
+slider79:0<-18,18,0.1>B19 Gain (dB)
+slider80:0.70<0.20,10.00,0.01>B19 Q
+
+slider81:0<0,1,1{Off,On}>B20 On
+slider82:1000<20,20000,1>B20 Freq (Hz)
+slider83:0<-18,18,0.1>B20 Gain (dB)
+slider84:0.70<0.20,10.00,0.01>B20 Q
+
+slider85:0<-18,18,0.1>Output (dB)
+slider86:1<0,1,1{Off,On}>Spectrum
+
+// Spectrum telemetry (0..1, log-frequency bins)
+slider87:0<0,1,0.001>-Z Spec 00
+slider88:0<0,1,0.001>-Z Spec 01
+slider89:0<0,1,0.001>-Z Spec 02
+slider90:0<0,1,0.001>-Z Spec 03
+slider91:0<0,1,0.001>-Z Spec 04
+slider92:0<0,1,0.001>-Z Spec 05
+slider93:0<0,1,0.001>-Z Spec 06
+slider94:0<0,1,0.001>-Z Spec 07
+slider95:0<0,1,0.001>-Z Spec 08
+slider96:0<0,1,0.001>-Z Spec 09
+slider97:0<0,1,0.001>-Z Spec 10
+slider98:0<0,1,0.001>-Z Spec 11
+slider99:0<0,1,0.001>-Z Spec 12
+slider100:0<0,1,0.001>-Z Spec 13
+slider101:0<0,1,0.001>-Z Spec 14
+slider102:0<0,1,0.001>-Z Spec 15
+slider103:0<0,1,0.001>-Z Spec 16
+slider104:0<0,1,0.001>-Z Spec 17
+slider105:0<0,1,0.001>-Z Spec 18
+slider106:0<0,1,0.001>-Z Spec 19
+slider107:0<0,1,0.001>-Z Spec 20
+slider108:0<0,1,0.001>-Z Spec 21
+slider109:0<0,1,0.001>-Z Spec 22
+slider110:0<0,1,0.001>-Z Spec 23
+slider111:0<0,1,0.001>-Z Spec 24
+slider112:0<0,1,0.001>-Z Spec 25
+slider113:0<0,1,0.001>-Z Spec 26
+slider114:0<0,1,0.001>-Z Spec 27
+slider115:0<0,1,0.001>-Z Spec 28
+slider116:0<0,1,0.001>-Z Spec 29
+slider117:0<0,1,0.001>-Z Spec 30
+slider118:0<0,1,0.001>-Z Spec 31
+
+// NEW: filter modes + cut slopes (kept after telemetry so bins stay on 87..118)
+slider119:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B1 Type
+slider120:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B2 Type
+slider121:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B3 Type
+slider122:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B4 Type
+slider123:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B5 Type
+slider124:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B6 Type
+slider125:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B7 Type
+slider126:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B8 Type
+slider127:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B9 Type
+slider128:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B10 Type
+slider129:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B11 Type
+slider130:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B12 Type
+slider131:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B13 Type
+slider132:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B14 Type
+slider133:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B15 Type
+slider134:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B16 Type
+slider135:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B17 Type
+slider136:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B18 Type
+slider137:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B19 Type
+slider138:0<0,3,1{Bell,LoShelf,HiShelf,Tilt}>B20 Type
+
+slider139:2<0,3,1{12,18,24,36}>LoCut Slope
+slider140:2<0,3,1{12,18,24,36}>HiCut Slope
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+
+@init
+ext_tail_size = -1;
+eps = exp(-46.051701859880914);
+
+function db2lin(db) ( exp(db*(log(10)/20)); );
+function clamp(x, a, b) ( min(max(x,a),b); );
+
+function biquad_run(x, b0,b1,b2,a1,a2, idx)
+(
+  base = st + idx;
+  x1 = mem[base];
+  x2 = mem[base+1];
+  y1 = mem[base+2];
+  y2 = mem[base+3];
+  y = b0*x + b1*x1 + b2*x2 - a1*y1 - a2*y2;
+  mem[base+1] = x1;
+  mem[base]   = x;
+  mem[base+3] = y1;
+  mem[base+2] = y;
+  y;
+);
+
+function onepole_run(x, b0,b1,a1, idx)
+(
+  base = opst + idx;
+  z1 = mem[base];
+  y = b0*x + z1;
+  mem[base] = b1*x - a1*y;
+  y;
+);
+
+// ---- biquad coefficient helpers (RBJ) ----
+// NOTE: functions write to globals b0,b1,b2,a1,a2.
+
+function calc_peak(fc, q, gain_db)
+(
+  A = exp(gain_db*(log(10)/40));
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  alpha = sw/(2*max(0.0001,q));
+  b0 = 1 + alpha*A;
+  b1 = -2*cw;
+  b2 = 1 - alpha*A;
+  a0 = 1 + alpha/A;
+  a1 = -2*cw;
+  a2 = 1 - alpha/A;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_lpf_q(fc, q)
+(
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  alpha = sw/(2*max(0.0001,q));
+  b0 = (1-cw)/2;
+  b1 = 1-cw;
+  b2 = (1-cw)/2;
+  a0 = 1+alpha;
+  a1 = -2*cw;
+  a2 = 1-alpha;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_hpf_q(fc, q)
+(
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  alpha = sw/(2*max(0.0001,q));
+  b0 = (1+cw)/2;
+  b1 = -(1+cw);
+  b2 = (1+cw)/2;
+  a0 = 1+alpha;
+  a1 = -2*cw;
+  a2 = 1-alpha;
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_lowshelf(fc, S, gain_db)
+(
+  A = exp(gain_db*(log(10)/40));
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  S = max(0.0001, S);
+  alpha = sw/2 * sqrt( (A + 1/A) * (1/S - 1) + 2 );
+  beta = 2*sqrt(A)*alpha;
+
+  b0 = A*((A+1) - (A-1)*cw + beta);
+  b1 = 2*A*((A-1) - (A+1)*cw);
+  b2 = A*((A+1) - (A-1)*cw - beta);
+  a0 = (A+1) + (A-1)*cw + beta;
+  a1 = -2*((A-1) + (A+1)*cw);
+  a2 = (A+1) + (A-1)*cw - beta;
+
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+function calc_highshelf(fc, S, gain_db)
+(
+  A = exp(gain_db*(log(10)/40));
+  w0 = 2*$pi*fc/srate;
+  cw = cos(w0); sw = sin(w0);
+  S = max(0.0001, S);
+  alpha = sw/2 * sqrt( (A + 1/A) * (1/S - 1) + 2 );
+  beta = 2*sqrt(A)*alpha;
+
+  b0 = A*((A+1) + (A-1)*cw + beta);
+  b1 = -2*A*((A-1) + (A+1)*cw);
+  b2 = A*((A+1) + (A-1)*cw - beta);
+  a0 = (A+1) - (A-1)*cw + beta;
+  a1 = 2*((A-1) - (A+1)*cw);
+  a2 = (A+1) - (A-1)*cw - beta;
+
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+);
+
+// 1st-order coefficients (bilinear). Writes to globals op_b0, op_b1, op_a1.
+function calc_onepole_lpf(fc)
+(
+  k = tan($pi*fc/srate);
+  op_b0 = k/(1+k);
+  op_b1 = op_b0;
+  op_a1 = (k-1)/(k+1);
+);
+
+function calc_onepole_hpf(fc)
+(
+  k = tan($pi*fc/srate);
+  op_b0 = 1/(1+k);
+  op_b1 = -op_b0;
+  op_a1 = (k-1)/(k+1);
+);
+
+// ---- Bands (B1..B20): build coefficients for up to 2 stages (Tilt uses 2) ----
+function build_band(idx, type, fc, q, g)
+(
+  S = clamp(q, 0.20, 10.00);
+  band_two[idx] = 0;
+  type==0 ? ( calc_peak(fc, q, g); b0a[idx]=b0; b1a[idx]=b1; b2a[idx]=b2; a1a[idx]=a1; a2a[idx]=a2; ) :
+  type==1 ? ( calc_lowshelf(fc, S, g); b0a[idx]=b0; b1a[idx]=b1; b2a[idx]=b2; a1a[idx]=a1; a2a[idx]=a2; ) :
+  type==2 ? ( calc_highshelf(fc, S, g); b0a[idx]=b0; b1a[idx]=b1; b2a[idx]=b2; a1a[idx]=a1; a2a[idx]=a2; ) :
+            ( band_two[idx]=1;
+              calc_lowshelf(fc, S, -g*0.5); b0a[idx]=b0; b1a[idx]=b1; b2a[idx]=b2; a1a[idx]=a1; a2a[idx]=a2;
+              calc_highshelf(fc, S, g*0.5); b0b[idx]=b0; b1b[idx]=b1; b2b[idx]=b2; a1b[idx]=a1; a2b[idx]=a2;
+            );
+);
+
+
+// ---- state memory layout ----
+NUM_BIQUADS = 46;
+BIQ_STATE = NUM_BIQUADS*2*4;
+ONE_STATE = 4;
+NUM_BANDS = 20;
+LC_STAGE_BASE = 0;
+BAND_STAGE_BASE = 3;
+HC_STAGE_BASE = BAND_STAGE_BASE + NUM_BANDS*2;
+
+st = 0;
+opst = st + BIQ_STATE;
+
+// spectrum buffers (fixed FFT)
+FFTSZ = 2048;
+ring   = opst + ONE_STATE;
+win    = ring + FFTSZ;
+fftbuf = win + (FFTSZ*0.5+1);
+bStart = fftbuf + FFTSZ;
+bEnd   = bStart + 32;
+spec   = bEnd + 32;
+
+ringpos = 0;
+fft_acc = 0;
+
+// build window + bin map
+i=0;
+loop(FFTSZ*0.5+1,
+  mem[win+i] = 0.5 - 0.5*cos(2*$pi*i/FFTSZ);
+  i+=1;
+);
+
+f0 = 20; f1 = 20000;
+ratio = exp(log(f1/f0)/32);
+fb = f0;
+i=0;
+loop(32,
+  fa = fb;
+  fb = fb*ratio;
+  ka = floor(fa*FFTSZ/srate);
+  kb = ceil(fb*FFTSZ/srate);
+  ka = clamp(ka, 1, FFTSZ*0.5-1);
+  kb = clamp(kb, ka+1, FFTSZ*0.5);
+  mem[bStart+i]=ka;
+  mem[bEnd+i]=kb;
+  mem[spec+i]=0;
+  i+=1;
+);
+
+// init states
+i=0;
+loop(BIQ_STATE + ONE_STATE, mem[st+i]=0; i+=1;);
+
+@slider
+lc_on = slider1>=0.5;
+lc_fc = clamp(slider2, 20, 20000);
+hc_on = slider3>=0.5;
+hc_fc = clamp(slider4, 20, 20000);
+
+band_on[0] = slider5>=0.5; band_fc[0] = clamp(slider6,20,20000); band_g[0] = slider7; band_q[0] = slider8;
+band_on[1] = slider9>=0.5; band_fc[1] = clamp(slider10,20,20000); band_g[1] = slider11; band_q[1] = slider12;
+band_on[2] = slider13>=0.5; band_fc[2] = clamp(slider14,20,20000); band_g[2] = slider15; band_q[2] = slider16;
+band_on[3] = slider17>=0.5; band_fc[3] = clamp(slider18,20,20000); band_g[3] = slider19; band_q[3] = slider20;
+band_on[4] = slider21>=0.5; band_fc[4] = clamp(slider22,20,20000); band_g[4] = slider23; band_q[4] = slider24;
+band_on[5] = slider25>=0.5; band_fc[5] = clamp(slider26,20,20000); band_g[5] = slider27; band_q[5] = slider28;
+band_on[6] = slider29>=0.5; band_fc[6] = clamp(slider30,20,20000); band_g[6] = slider31; band_q[6] = slider32;
+band_on[7] = slider33>=0.5; band_fc[7] = clamp(slider34,20,20000); band_g[7] = slider35; band_q[7] = slider36;
+band_on[8] = slider37>=0.5; band_fc[8] = clamp(slider38,20,20000); band_g[8] = slider39; band_q[8] = slider40;
+band_on[9] = slider41>=0.5; band_fc[9] = clamp(slider42,20,20000); band_g[9] = slider43; band_q[9] = slider44;
+band_on[10] = slider45>=0.5; band_fc[10] = clamp(slider46,20,20000); band_g[10] = slider47; band_q[10] = slider48;
+band_on[11] = slider49>=0.5; band_fc[11] = clamp(slider50,20,20000); band_g[11] = slider51; band_q[11] = slider52;
+band_on[12] = slider53>=0.5; band_fc[12] = clamp(slider54,20,20000); band_g[12] = slider55; band_q[12] = slider56;
+band_on[13] = slider57>=0.5; band_fc[13] = clamp(slider58,20,20000); band_g[13] = slider59; band_q[13] = slider60;
+band_on[14] = slider61>=0.5; band_fc[14] = clamp(slider62,20,20000); band_g[14] = slider63; band_q[14] = slider64;
+band_on[15] = slider65>=0.5; band_fc[15] = clamp(slider66,20,20000); band_g[15] = slider67; band_q[15] = slider68;
+band_on[16] = slider69>=0.5; band_fc[16] = clamp(slider70,20,20000); band_g[16] = slider71; band_q[16] = slider72;
+band_on[17] = slider73>=0.5; band_fc[17] = clamp(slider74,20,20000); band_g[17] = slider75; band_q[17] = slider76;
+band_on[18] = slider77>=0.5; band_fc[18] = clamp(slider78,20,20000); band_g[18] = slider79; band_q[18] = slider80;
+band_on[19] = slider81>=0.5; band_fc[19] = clamp(slider82,20,20000); band_g[19] = slider83; band_q[19] = slider84;
+
+band_type[0] = slider119;
+band_type[1] = slider120;
+band_type[2] = slider121;
+band_type[3] = slider122;
+band_type[4] = slider123;
+band_type[5] = slider124;
+band_type[6] = slider125;
+band_type[7] = slider126;
+band_type[8] = slider127;
+band_type[9] = slider128;
+band_type[10] = slider129;
+band_type[11] = slider130;
+band_type[12] = slider131;
+band_type[13] = slider132;
+band_type[14] = slider133;
+band_type[15] = slider134;
+band_type[16] = slider135;
+band_type[17] = slider136;
+band_type[18] = slider137;
+band_type[19] = slider138;
+
+lc_slope = slider139; // 0..3 => 12/18/24/36
+hc_slope = slider140;
+
+out_gain = db2lin(slider85);
+spec_on = slider86>=0.5;
+
+// ---- LoCut (HP) coefficients ----
+lc_has_1p = 0;
+lc_stages = 0;
+
+lc_on ? (
+  lc_slope==0 ? (
+    lc_stages = 1;
+    calc_hpf_q(lc_fc, 0.70710678); lc0_b0=b0; lc0_b1=b1; lc0_b2=b2; lc0_a1=a1; lc0_a2=a2;
+  ) :
+  lc_slope==1 ? (
+    lc_has_1p = 1;
+    lc_stages = 1;
+    calc_onepole_hpf(lc_fc); lc1p_b0=op_b0; lc1p_b1=op_b1; lc1p_a1=op_a1;
+    calc_hpf_q(lc_fc, 1.0); lc0_b0=b0; lc0_b1=b1; lc0_b2=b2; lc0_a1=a1; lc0_a2=a2;
+  ) :
+  lc_slope==2 ? (
+    lc_stages = 2;
+    calc_hpf_q(lc_fc, 0.54119610); lc0_b0=b0; lc0_b1=b1; lc0_b2=b2; lc0_a1=a1; lc0_a2=a2;
+    calc_hpf_q(lc_fc, 1.30656296); lc1_b0=b0; lc1_b1=b1; lc1_b2=b2; lc1_a1=a1; lc1_a2=a2;
+  ) : (
+    lc_stages = 3;
+    calc_hpf_q(lc_fc, 0.51763809); lc0_b0=b0; lc0_b1=b1; lc0_b2=b2; lc0_a1=a1; lc0_a2=a2;
+    calc_hpf_q(lc_fc, 0.70710678); lc1_b0=b0; lc1_b1=b1; lc1_b2=b2; lc1_a1=a1; lc1_a2=a2;
+    calc_hpf_q(lc_fc, 1.93185165); lc2_b0=b0; lc2_b1=b1; lc2_b2=b2; lc2_a1=a1; lc2_a2=a2;
+  );
+);
+
+// ---- HiCut (LP) coefficients ----
+hc_has_1p = 0;
+hc_stages = 0;
+
+hc_on ? (
+  hc_slope==0 ? (
+    hc_stages = 1;
+    calc_lpf_q(hc_fc, 0.70710678); hc0_b0=b0; hc0_b1=b1; hc0_b2=b2; hc0_a1=a1; hc0_a2=a2;
+  ) :
+  hc_slope==1 ? (
+    hc_has_1p = 1;
+    hc_stages = 1;
+    calc_onepole_lpf(hc_fc); hc1p_b0=op_b0; hc1p_b1=op_b1; hc1p_a1=op_a1;
+    calc_lpf_q(hc_fc, 1.0); hc0_b0=b0; hc0_b1=b1; hc0_b2=b2; hc0_a1=a1; hc0_a2=a2;
+  ) :
+  hc_slope==2 ? (
+    hc_stages = 2;
+    calc_lpf_q(hc_fc, 0.54119610); hc0_b0=b0; hc0_b1=b1; hc0_b2=b2; hc0_a1=a1; hc0_a2=a2;
+    calc_lpf_q(hc_fc, 1.30656296); hc1_b0=b0; hc1_b1=b1; hc1_b2=b2; hc1_a1=a1; hc1_a2=a2;
+  ) : (
+    hc_stages = 3;
+    calc_lpf_q(hc_fc, 0.51763809); hc0_b0=b0; hc0_b1=b1; hc0_b2=b2; hc0_a1=a1; hc0_a2=a2;
+    calc_lpf_q(hc_fc, 0.70710678); hc1_b0=b0; hc1_b1=b1; hc1_b2=b2; hc1_a1=a1; hc1_a2=a2;
+    calc_lpf_q(hc_fc, 1.93185165); hc2_b0=b0; hc2_b1=b1; hc2_b2=b2; hc2_a1=a1; hc2_a2=a2;
+  );
+);
+
+i=0;
+loop(NUM_BANDS,
+  build_band(i, band_type[i], band_fc[i], band_q[i], band_g[i]);
+  i+=1;
+);
+
+@sample
+xL = spl0; xR = spl1;
+
+// ---- LoCut (HP): biquad sections 0..2 ----
+lc_on ? (
+  lc_has_1p ? (
+    xL = onepole_run(xL, lc1p_b0, lc1p_b1, lc1p_a1, 0);
+    xR = onepole_run(xR, lc1p_b0, lc1p_b1, lc1p_a1, 1);
+  );
+  lc_stages>=1 ? (
+    xL = biquad_run(xL, lc0_b0,lc0_b1,lc0_b2,lc0_a1,lc0_a2, ((LC_STAGE_BASE+0)*2+0)*4);
+    xR = biquad_run(xR, lc0_b0,lc0_b1,lc0_b2,lc0_a1,lc0_a2, ((LC_STAGE_BASE+0)*2+1)*4);
+  );
+  lc_stages>=2 ? (
+    xL = biquad_run(xL, lc1_b0,lc1_b1,lc1_b2,lc1_a1,lc1_a2, ((LC_STAGE_BASE+1)*2+0)*4);
+    xR = biquad_run(xR, lc1_b0,lc1_b1,lc1_b2,lc1_a1,lc1_a2, ((LC_STAGE_BASE+1)*2+1)*4);
+  );
+  lc_stages>=3 ? (
+    xL = biquad_run(xL, lc2_b0,lc2_b1,lc2_b2,lc2_a1,lc2_a2, ((LC_STAGE_BASE+2)*2+0)*4);
+    xR = biquad_run(xR, lc2_b0,lc2_b1,lc2_b2,lc2_a1,lc2_a2, ((LC_STAGE_BASE+2)*2+1)*4);
+  );
+);
+
+// ---- Bands ----
+i=0;
+loop(NUM_BANDS,
+  band_on[i] ? (
+    stage = BAND_STAGE_BASE + i*2;
+    xL = biquad_run(xL, b0a[i],b1a[i],b2a[i],a1a[i],a2a[i], (stage*2+0)*4);
+    xR = biquad_run(xR, b0a[i],b1a[i],b2a[i],a1a[i],a2a[i], (stage*2+1)*4);
+    band_two[i] ? (
+      stage2 = stage+1;
+      xL = biquad_run(xL, b0b[i],b1b[i],b2b[i],a1b[i],a2b[i], (stage2*2+0)*4);
+      xR = biquad_run(xR, b0b[i],b1b[i],b2b[i],a1b[i],a2b[i], (stage2*2+1)*4);
+    );
+  );
+  i+=1;
+);
+
+// ---- HiCut (LP): biquad sections 11..13 ----
+hc_on ? (
+  hc_has_1p ? (
+    xL = onepole_run(xL, hc1p_b0, hc1p_b1, hc1p_a1, 2);
+    xR = onepole_run(xR, hc1p_b0, hc1p_b1, hc1p_a1, 3);
+  );
+  hc_stages>=1 ? (
+    xL = biquad_run(xL, hc0_b0,hc0_b1,hc0_b2,hc0_a1,hc0_a2, ((HC_STAGE_BASE+0)*2+0)*4);
+    xR = biquad_run(xR, hc0_b0,hc0_b1,hc0_b2,hc0_a1,hc0_a2, ((HC_STAGE_BASE+0)*2+1)*4);
+  );
+  hc_stages>=2 ? (
+    xL = biquad_run(xL, hc1_b0,hc1_b1,hc1_b2,hc1_a1,hc1_a2, ((HC_STAGE_BASE+1)*2+0)*4);
+    xR = biquad_run(xR, hc1_b0,hc1_b1,hc1_b2,hc1_a1,hc1_a2, ((HC_STAGE_BASE+1)*2+1)*4);
+  );
+  hc_stages>=3 ? (
+    xL = biquad_run(xL, hc2_b0,hc2_b1,hc2_b2,hc2_a1,hc2_a2, ((HC_STAGE_BASE+2)*2+0)*4);
+    xR = biquad_run(xR, hc2_b0,hc2_b1,hc2_b2,hc2_a1,hc2_a2, ((HC_STAGE_BASE+2)*2+1)*4);
+  );
+);
+
+xL *= out_gain;
+xR *= out_gain;
+
+spl0 = xL;
+spl1 = xR;
+
+// spectrum tap (post EQ)
+spec_on ? (
+  m = 0.5*(xL + xR);
+  mem[ring+ringpos] = m;
+  ringpos = (ringpos+1) >= FFTSZ ? 0 : (ringpos+1);
+  fft_acc += 1;
+);
+
+@block
+spec_on && fft_acc >= (FFTSZ*0.5) ? (
+  fft_acc = 0;
+  start = ringpos;
+  buf1 = start - FFTSZ;
+  buf1 < 0 ? buf1 += FFTSZ;
+
+  i=0;
+  loop(FFTSZ*0.5+1,
+    fftbuf_i = fftbuf + i;
+    mem[fftbuf_i] = mem[ring + ((buf1+i) % FFTSZ)] * mem[win+i];
+    i+=1;
+  );
+  j=FFTSZ*0.5;
+  loop(FFTSZ*0.5-1,
+    mem[fftbuf+i] = mem[ring + ((buf1+i) % FFTSZ)] * mem[win + (j-1)];
+    i+=1;
+    j-=1;
+  );
+
+  fft_real(fftbuf, FFTSZ);
+  fft_permute(fftbuf, FFTSZ/2);
+  mem[fftbuf+1]=0;
+
+  floor_db = -90;
+  ceil_db = -18;
+  sc = 1/(ceil_db - floor_db);
+
+  b=0;
+  loop(32,
+    ka = mem[bStart+b];
+    kb = mem[bEnd+b];
+    sum=0; cnt=0;
+    k=ka;
+    loop(kb-ka,
+      re = mem[fftbuf + k*2];
+      im = mem[fftbuf + k*2 + 1];
+      sum += re*re + im*im;
+      cnt += 1;
+      k += 1;
+    );
+    mag = sqrt(max(eps, sum/max(1,cnt)));
+    db = 20/log(10) * log(mag);
+    db = clamp(db, floor_db, ceil_db);
+    n = (db - floor_db) * sc;
+    mem[spec+b] = max(n, mem[spec+b]*0.85);
+    b+=1;
+  );
+
+  slider87 = mem[spec+0];
+  slider88 = mem[spec+1];
+  slider89 = mem[spec+2];
+  slider90 = mem[spec+3];
+  slider91 = mem[spec+4];
+  slider92 = mem[spec+5];
+  slider93 = mem[spec+6];
+  slider94 = mem[spec+7];
+  slider95 = mem[spec+8];
+  slider96 = mem[spec+9];
+  slider97 = mem[spec+10];
+  slider98 = mem[spec+11];
+  slider99 = mem[spec+12];
+  slider100 = mem[spec+13];
+  slider101 = mem[spec+14];
+  slider102 = mem[spec+15];
+  slider103 = mem[spec+16];
+  slider104 = mem[spec+17];
+  slider105 = mem[spec+18];
+  slider106 = mem[spec+19];
+  slider107 = mem[spec+20];
+  slider108 = mem[spec+21];
+  slider109 = mem[spec+22];
+  slider110 = mem[spec+23];
+  slider111 = mem[spec+24];
+  slider112 = mem[spec+25];
+  slider113 = mem[spec+26];
+  slider114 = mem[spec+27];
+  slider115 = mem[spec+28];
+  slider116 = mem[spec+29];
+  slider117 = mem[spec+30];
+  slider118 = mem[spec+31];
+
+  slider_automate(slider87);
+  slider_automate(slider88);
+  slider_automate(slider89);
+  slider_automate(slider90);
+  slider_automate(slider91);
+  slider_automate(slider92);
+  slider_automate(slider93);
+  slider_automate(slider94);
+  slider_automate(slider95);
+  slider_automate(slider96);
+  slider_automate(slider97);
+  slider_automate(slider98);
+  slider_automate(slider99);
+  slider_automate(slider100);
+  slider_automate(slider101);
+  slider_automate(slider102);
+  slider_automate(slider103);
+  slider_automate(slider104);
+  slider_automate(slider105);
+  slider_automate(slider106);
+  slider_automate(slider107);
+  slider_automate(slider108);
+  slider_automate(slider109);
+  slider_automate(slider110);
+  slider_automate(slider111);
+  slider_automate(slider112);
+  slider_automate(slider113);
+  slider_automate(slider114);
+  slider_automate(slider115);
+  slider_automate(slider116);
+  slider_automate(slider117);
+  slider_automate(slider118);
+);

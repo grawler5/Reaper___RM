@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RM Test Debug</title>
+</head>
+<body>
+  <script>
+    (function(){
+      const u = new URL(location.href);
+      u.pathname = u.pathname.replace(/test_debug\.html$/, 'index.html');
+      u.searchParams.set('debug','1');
+      location.replace(u.toString());
+    })();
+  </script>
+  <noscript>
+    Open <a href="./index.html?debug=1">index.html?debug=1</a>
+  </noscript>
+</body>
+</html>

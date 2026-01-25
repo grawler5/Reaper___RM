@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RM UI Debug</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; padding:18px;}
+    code{background:#f2f2f2; padding:2px 6px; border-radius:6px;}
+    a{color:#0a58ca;}
+  </style>
+</head>
+<body>
+  <h2>RM UI Debug</h2>
+  <p>This page redirects to <code>index.html?debug=1</code>.</p>
+  <p>If the redirect doesn't work, open: <a href="./index.html?debug=1">index.html?debug=1</a></p>
+  <script>
+    (function(){
+      const u = new URL(location.href);
+      u.pathname = u.pathname.replace(/debug\.html$/, 'index.html');
+      u.searchParams.set('debug','1');
+      location.replace(u.toString());
+    })();
+  </script>
+</body>
+</html>

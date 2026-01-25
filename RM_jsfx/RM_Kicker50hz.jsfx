@@ -1,0 +1,75 @@
+// (C) 2007, Michael Gruhn.
+// Restored original "50 Hz Kicker" (LOSER) + output telemetry for RM web UI.
+//
+// Telemetry:
+//   slider4: Out Peak (0..1)
+
+desc:RM_Kicker
+//tags: processing equalizer
+//author: LOSER (restored) + RM telemetry wrapper
+
+slider1:50<10,200,1>Frequency (Hz)
+slider2:-12<-120,12,1>Wet (dB)
+slider3:-3<-120,12,1>Dry (dB)
+
+slider4:0<0,1,0.0001>-Z Telemetry: Out Peak
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+options:no_meter
+
+@init
+ext_tail_size=-1;
+
+// peak meter state
+pkOut = 0;
+
+b1Det = -exp(-300 / srate );
+a0Det = 1.0 + b1Det;
+
+b1Env1 = -exp(-3 / srate );
+a0Env1 = 1.0 + b1Env1;
+b1Env2 = -exp(-30 / srate );
+a0Env2 = 1.0 + b1Env2;
+
+@slider
+adj = 2*$pi*slider1 / srate;
+
+wet = 2^(slider2/6);
+dry = 2^(slider3/6);
+
+gain = 0;
+tmpDet = 0;
+tmpEnv1 = 0.1;
+tmpEnv2 = 0;
+
+@block
+// decay tuned for UI updates
+tele_decay = exp(-1 / (0.12 * srate / max(1, samplesblock)));
+pkOut *= tele_decay;
+
+slider4 = min(1, pkOut);
+
+@sample
+// original detector/envelope
+
+// "det" uses L+R to drive the oscillator (classic kick enhancer behavior)
+det = abs(sqrt(tmpDet = a0Det*(spl0+spl1)*2 - b1Det*tmpDet));
+env1 = sqrt(tmpEnv1 = a0Env1*det - b1Env1*tmpEnv1);
+env2 = sqrt(tmpEnv2 = a0Env2*det - b1Env2*tmpEnv2);
+
+gain = min(max(env2/env1,1)-1,1);
+
+gain == 0 ? pos=0;
+
+spl0 = sin(pos)*gain*wet + spl0*dry;
+spl1 = sin(pos)*gain*wet + spl1*dry;
+
+pos += adj;
+
+// output peak (post-processing)
+lvlOut = max(abs(spl0), abs(spl1));
+pkOut = max(pkOut, min(1, lvlOut));

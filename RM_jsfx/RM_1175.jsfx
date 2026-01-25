@@ -1,0 +1,180 @@
+// Copyright 2006, Thomas Scott Stillwell
+// All rights reserved.
+//
+//Redistribution and use in source and binary forms, with or without modification, are permitted 
+//provided that the following conditions are met:
+//
+//Redistributions of source code must retain the above copyright notice, this list of conditions 
+//and the following disclaimer. 
+//
+//Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//and the following disclaimer in the documentation and/or other materials provided with the distribution. 
+//
+//The name of Thomas Scott Stillwell may not be used to endorse or 
+//promote products derived from this software without specific prior written permission. 
+//
+//THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR 
+//IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND 
+//FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS 
+//BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES 
+//(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
+//PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, 
+//STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+//THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+desc:RM_1175
+//tags: dynamics compressor
+//author: Stillwell (orig) / hybrid mapping
+
+// Parameter order is chosen to match the web NC76B panel defaults in reaper-remote-mixer:
+//   1 Ratio, 2 Out Gain, 3 Attack, 4 Release, 6 In Gain, 7 Punch, 8 SC Key, 9 Trick.
+// Slider 5 is an OUTPUT meter for Gain Reduction (dB), updated by the DSP.
+
+// Use 0..4 enum so REAPER shows the label correctly (non-zero enum mins can show blank).
+slider1:0<0,4,1{4,8,12,20,ALL}>Ratio
+slider2:0<-24,24,0.1>Out Gain (dB)
+slider3:400<20,2000,10>Attack (uS)
+slider4:250<20,1000,1>Release (mS)
+slider5:0<0,24,0.1>Gain Reduction (dB)
+// Allow cutting as well as boosting. 0 dB sits in the middle of the knob.
+slider6:0<-24,24,0.1>In Gain (dB)
+slider7:0<0,1,1{Off,On}>Punch
+slider8:0<0,1,1{Off,On}>SC Key
+slider9:0<0,1,1{Off,On}>Trick
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+  ext_tail_size = -1;
+  log2db = 8.6858896380650365530225783783321; // 20 / ln(10)
+  db2log = 0.11512925464970228420089957273422; // ln(10) / 20
+
+  // Detector smoothing (RMS-ish). 10ms default.
+  rmscoef = exp(-1/(0.010 * srate));
+
+  // Fixed threshold in dBFS; In Gain drives into it (1176-style).
+  thresh = -18;
+  threshv = exp(thresh * db2log);
+
+  // Ratio smoothing / program-dependent release bits from original 1175
+  rundb = 0;
+  overdb = 0;
+  runratio = 4;
+  averatio = 4;
+  ratatcoef = exp(-1/(0.00001 * srate));
+  ratrelcoef = exp(-1/(0.5 * srate));
+
+  attime = 0.0004;
+  reltime = 0.250;
+  atcoef  = exp(-1/(attime * srate));
+  relcoef = exp(-1/(reltime * srate));
+
+  // GR meter (linear gain), decays back to 1.0
+  gr_meter = 1;
+  gr_meter_decay = exp(1/(1*srate));
+
+  // expose for debugging / external hosts
+  ext_gr_meter = 0;
+
+  // internal
+  runave = 0;
+  allin = 0;
+  ratio = 4;
+  cratio = 4;
+  capsc = log2db;
+  meter_update_div = 0;
+
+@slider
+  // Ratio mapping: keep slider1 snapped to integer steps so web/automation
+  // can't land on 0.0001 etc (which breaks enum labels and == comparisons).
+  rsel = floor(slider1 + 0.5);
+  rsel < 0 ? rsel = 0;
+  rsel > 4 ? rsel = 4;
+  slider1 != rsel ? slider1 = rsel;
+
+  // 0=4, 1=8, 2=12, 3=20, 4=ALL
+  rsel == 0 ? ratio = 4 : (rsel == 1 ? ratio = 8 : (rsel == 2 ? ratio = 12 : ratio = 20));
+  allin = (rsel >= 4);
+
+  // "Trick" emulates the 1175 "broken capacitor" mode (stronger detector scaling)
+  capsc = log2db;
+  slider9 >= 0.5 ? capsc *= 2.08136898;
+
+  // attack/release
+  // 1176-style: clockwise = faster (smaller time). Keep slider range but invert meaning.
+  att_us = min(2000, max(20, 2020 - slider3));
+  rel_ms = min(1000, max(20, 1020 - slider4));
+  attime = att_us / 1000000;
+  reltime = rel_ms / 1000;
+  atcoef  = exp(-1/(attime * srate));
+  relcoef = exp(-1/(reltime * srate));
+
+  // gains
+  ingainv = exp(slider6 * db2log);
+  makeupv = exp(slider2 * db2log);
+@sample
+  ospl0 = spl0;
+  ospl1 = spl1;
+
+  // 1176-style input drive
+  pspl0 = spl0 * ingainv;
+  pspl1 = spl1 * ingainv;
+
+  // detector
+  aspl0 = abs(pspl0);
+  aspl1 = abs(pspl1);
+  maxspl = max(aspl0, aspl1);
+  maxspl = maxspl * maxspl;
+  runave = maxspl + rmscoef * (runave - maxspl);
+  det = sqrt(max(0, runave));
+
+  // dB above threshold
+  overdb = max(0, capsc * log(det / threshv));
+
+  // program-dependent behaviour from original
+  overdb - rundb > 5 ? (averatio = 4;);
+
+  overdb > rundb ? (
+    rundb = overdb + atcoef * (rundb - overdb);
+    runratio = averatio + ratatcoef * (runratio - averatio);
+  ) : (
+    rundb = overdb + relcoef * (rundb - overdb);
+    runratio = averatio + ratrelcoef * (runratio - averatio);
+  );
+
+  overdb = rundb;
+  averatio = runratio;
+
+  allin ? (cratio = 12 + averatio;) : (cratio = ratio;);
+
+  // gain reduction in dB (negative)
+  ext_gr_meter = gr = -overdb * (cratio - 1) / cratio;
+  grv = exp(gr * db2log);
+
+  // meter follows most reduction, then returns slowly
+  grv < gr_meter ? gr_meter = grv : (gr_meter *= gr_meter_decay; gr_meter > 1 ? gr_meter = 1;);
+
+  // process wet
+  wet0 = pspl0 * grv * makeupv;
+  wet1 = pspl1 * grv * makeupv;
+  spl0 = wet0;
+  spl1 = wet1;
+@block
+  // Update GR output parameter at a modest rate.
+  // Use gr_meter (linear gain) so the meter decays like the original 1175.
+  meter_update_div += 1;
+  meter_update_div >= 2 ? (
+    meter_update_div = 0;
+
+    gm = max(0.000000000001, gr_meter);
+    gr_db_out = -log(gm) * log2db; // convert linear gain -> dB (positive)
+
+    gr_db_out > 24 ? gr_db_out = 24;
+    gr_db_out < 0 ? gr_db_out = 0;
+
+    slider5 = gr_db_out;
+    slider_automate(slider5);
+  );

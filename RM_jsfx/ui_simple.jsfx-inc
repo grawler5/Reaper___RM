@@ -1,0 +1,85 @@
+// Simple UI helpers for JSFX (sliders + toggles)
+// Usage: import ui_simple.jsfx-inc
+
+@init
+// no-op init to satisfy hosts expecting code blocks in imports
+
+function ui_clamp(v lo hi) ( v < lo ? lo : v > hi ? hi : v; );
+
+function ui_begin()
+(
+  ui_mouse_down = mouse_cap & 1;
+  ui_mouse_click = ui_mouse_down && !(ui_last_cap & 1);
+  ui_mouse_up = !ui_mouse_down && (ui_last_cap & 1);
+  ui_mouse_up ? (ui_drag = 0; ui_drag_slider = 0;);
+);
+
+function ui_set_slider_val(sl val mn mx)
+(
+  val = ui_clamp(val, mn, mx);
+  slider(sl) = val;
+  slider_automate(sl);
+);
+
+function ui_slider_v(x y w h sl mn mx label)
+  local(val norm knob_y hit v)
+(
+  val = slider(sl);
+  norm = (mx == mn) ? 0 : ui_clamp((val - mn) / (mx - mn), 0, 1);
+  hit = mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h;
+  ui_mouse_click && hit ? (
+    ui_drag = 1; ui_drag_slider = sl;
+    ui_drag_min = mn; ui_drag_max = mx;
+    ui_drag_x = x; ui_drag_y = y; ui_drag_w = w; ui_drag_h = h;
+  );
+  ui_drag && ui_drag_slider == sl && ui_mouse_down ? (
+    v = 1 - ((mouse_y - y) / max(1, h));
+    ui_set_slider_val(sl, mn + ui_clamp(v, 0, 1) * (mx - mn), mn, mx);
+  );
+  gfx_r=0.16; gfx_g=0.17; gfx_b=0.18; gfx_rect(x,y,w,h,1);
+  gfx_r=0.05; gfx_g=0.06; gfx_b=0.07; gfx_rect(x+2,y+2,w-4,h-4,1);
+  knob_y = y + (1 - norm) * (h-12);
+  gfx_r=0.78; gfx_g=0.78; gfx_b=0.78; gfx_rect(x+3,knob_y,w-6,12,1);
+  gfx_r=0.9; gfx_g=0.9; gfx_b=0.9;
+  gfx_x=x-4; gfx_y=y+h+8; gfx_drawstr(label);
+  gfx_x=x-4; gfx_y=y-18; gfx_drawnumber(val, 1);
+);
+
+function ui_slider_h(x y w h sl mn mx label)
+  local(val norm knob_x hit v)
+(
+  val = slider(sl);
+  norm = (mx == mn) ? 0 : ui_clamp((val - mn) / (mx - mn), 0, 1);
+  hit = mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h;
+  ui_mouse_click && hit ? (
+    ui_drag = 1; ui_drag_slider = sl;
+    ui_drag_min = mn; ui_drag_max = mx;
+    ui_drag_x = x; ui_drag_y = y; ui_drag_w = w; ui_drag_h = h;
+  );
+  ui_drag && ui_drag_slider == sl && ui_mouse_down ? (
+    v = (mouse_x - x) / max(1, w);
+    ui_set_slider_val(sl, mn + ui_clamp(v, 0, 1) * (mx - mn), mn, mx);
+  );
+  gfx_r=0.16; gfx_g=0.17; gfx_b=0.18; gfx_rect(x,y,w,h,1);
+  gfx_r=0.05; gfx_g=0.06; gfx_b=0.07; gfx_rect(x+2,y+2,w-4,h-4,1);
+  knob_x = x + norm * (w-12);
+  gfx_r=0.78; gfx_g=0.78; gfx_b=0.78; gfx_rect(knob_x,y+3,12,h-6,1);
+  gfx_r=0.9; gfx_g=0.9; gfx_b=0.9;
+  gfx_x=x; gfx_y=y-18; gfx_drawstr(label);
+  gfx_x=x+w+8; gfx_y=y-2; gfx_drawnumber(val, 1);
+);
+
+function ui_toggle(x y w h sl label)
+  local(hit on)
+(
+  hit = mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h;
+  ui_mouse_click && hit ? (
+    slider(sl) = 1 - slider(sl);
+    slider_automate(sl);
+  );
+  on = slider(sl) >= 0.5;
+  on ? (gfx_r=0.2; gfx_g=0.6; gfx_b=0.3;) : (gfx_r=0.18; gfx_g=0.18; gfx_b=0.18;);
+  gfx_rect(x,y,w,h,1);
+  gfx_r=0.95; gfx_g=0.95; gfx_b=0.95;
+  gfx_x=x+6; gfx_y=y+4; gfx_drawstr(label);
+);

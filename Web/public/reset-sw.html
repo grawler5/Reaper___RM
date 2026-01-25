@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ReaperRM reset</title>
+</head>
+<body>
+  <h3>Resetting caches…</h3>
+  <pre id="out"></pre>
+  <script>
+  (async function(){
+    const out = document.getElementById('out');
+    function log(s){ out.textContent += s + "\n"; }
+    try{
+      if ('serviceWorker' in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs){ await r.unregister(); }
+        log("service workers: unregistered");
+      } else {
+        log("service workers: not supported");
+      }
+    }catch(e){ log("sw error: "+e); }
+    try{
+      if (window.caches){
+        const keys = await caches.keys();
+        for (const k of keys){ await caches.delete(k); }
+        log("caches: cleared");
+      } else {
+        log("caches: not available");
+      }
+    }catch(e){ log("cache error: "+e); }
+    log("redirecting…");
+    setTimeout(function(){ location.href='/?v=fix-strips-2026-01-23c'; }, 500);
+  })();
+  </script>
+</body>
+</html>

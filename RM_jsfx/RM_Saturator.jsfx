@@ -1,0 +1,508 @@
+desc:RM_Saturator
+
+/*
+  v3 changes:
+  - Selectable HP/LP slopes: 6 .. 96 dB/oct (cascade of 1-pole sections)
+  - Output fader range extended to -50 dB
+  - Auto level: RMS match (smoothed)
+
+  Note on slopes:
+  - Slopes are implemented by cascading identical 1st-order sections.
+  - This changes the effective corner slightly compared to a single section.
+*/
+
+slider1:drive_db=18<0,60,0.1>- Drive (dB)
+slider2:punish=0<0,1,1{Off,On}>- Punish (+20 dB)
+slider3:style=0<0,4,1{Tape,Tube,Diode,Trans,Rect}>- Style
+slider4:bias=0<-0.50,0.50,0.001>- Bias (asym)
+slider5:tone_db=0<-12,12,0.1>- Tone (tilt dB)
+
+slider6:locut=20<20,300,1>- LoCut (Hz)
+slider7:hp_slope=0<0,5,1{6,12,18,24,48,96}>- HP Slope (dB/oct)
+
+slider8:hicut=20000<4000,20000,10>- HiCut (Hz)
+slider9:lp_slope=0<0,5,1{6,12,18,24,48,96}>- LP Slope (dB/oct)
+
+slider10:auto=1<0,1,1{Off,On}>- Auto level (RMS)
+slider11:out_db=0<-50,24,0.1>- Output (dB)
+slider12:mix=100<0,100,0.1>- Mix (%)
+
+@init
+pi = 3.141592653589793;
+gfx_ext_retina = 1;
+
+ui_drag = 0;
+ui_drag_slider = 0;
+ui_drag_start_y = 0;
+ui_drag_start_val = 0;
+ui_drag_min = 0;
+ui_drag_max = 1;
+ui_last_cap = 0;
+
+maxst = 16; // 6..96 dB/oct => 1..16 stages
+
+// --- oversampling input history
+os_prevL = 0;
+os_prevR = 0;
+
+// decimation lowpass state (at 2x rate)
+dec_yL = 0;
+dec_yR = 0;
+
+// --- auto-level RMS followers
+auto_in_p = 0.000000001;
+auto_out_p = 0.000000001;
+auto_gain = 1.0;
+
+// coeffs (set in @slider)
+hp_a = 0; lp_a = 0; dec_a = 0;
+hp_a_ref = 0; lp_a_ref = 0;
+
+ls_b0=1; ls_b1=0; ls_b2=0; ls_a1=0; ls_a2=0;
+hs_b0=1; hs_b1=0; hs_b2=0; hs_a1=0; hs_a2=0;
+
+auto_a = 0; // power smoother
+gain_a = 0; // gain smoother
+
+// ---- memory layout for cascaded 1-poles (2 channels * 16 stages) ----
+hp_y_base   = 0;        // hp y state @2x
+hp_x_base   = 64;       // hp x_prev @2x
+lp_y_base   = 128;      // lp y state @2x
+
+ref_hp_y_base = 256;    // hp y state @1x (for RMS reference)
+ref_hp_x_base = 320;    // hp x_prev @1x
+ref_lp_y_base = 384;    // lp y state @1x
+
+// ---- RBJ shelves (S=1), pivot fixed at 1000 Hz, designed at 2x sample rate ----
+function rbj_lowshelf_os(gdb) local(A,w0,cosw,sinw,alpha,beta,a0,a1,a2,b0,b1,b2,sr2)(
+  sr2 = srate*2;
+  A = exp(log(10)*gdb/40); // 10^(dB/40)
+  w0 = 2*pi*1000/sr2;
+  w0 > pi ? w0 = pi;
+  cosw = cos(w0); sinw = sin(w0);
+  alpha = (sinw/2)*sqrt(2);
+  beta  = 2*sqrt(A)*alpha;
+
+  b0 =    A*((A+1)-(A-1)*cosw + beta);
+  b1 =  2*A*((A-1)-(A+1)*cosw);
+  b2 =    A*((A+1)-(A-1)*cosw - beta);
+  a0 =       (A+1)+(A-1)*cosw + beta;
+  a1 = -2*   ((A-1)+(A+1)*cosw);
+  a2 =       (A+1)+(A-1)*cosw - beta;
+
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+  ls_b0=b0; ls_b1=b1; ls_b2=b2; ls_a1=a1; ls_a2=a2;
+);
+
+function rbj_highshelf_os(gdb) local(A,w0,cosw,sinw,alpha,beta,a0,a1,a2,b0,b1,b2,sr2)(
+  sr2 = srate*2;
+  A = exp(log(10)*gdb/40);
+  w0 = 2*pi*1000/sr2;
+  w0 > pi ? w0 = pi;
+  cosw = cos(w0); sinw = sin(w0);
+  alpha = (sinw/2)*sqrt(2);
+  beta  = 2*sqrt(A)*alpha;
+
+  b0 =    A*((A+1)+(A-1)*cosw + beta);
+  b1 = -2*A*((A-1)+(A+1)*cosw);
+  b2 =    A*((A+1)+(A-1)*cosw - beta);
+  a0 =       (A+1)-(A-1)*cosw + beta;
+  a1 =  2*   ((A-1)-(A+1)*cosw);
+  a2 =       (A+1)-(A-1)*cosw - beta;
+
+  b0/=a0; b1/=a0; b2/=a0; a1/=a0; a2/=a0;
+  hs_b0=b0; hs_b1=b1; hs_b2=b2; hs_a1=a1; hs_a2=a2;
+);
+
+// --- cascaded 1-pole HP @2x ---
+function hp_cascade_os(x, chan) local(i,idx,y_prev,x_prev,y)(
+  i = 0;
+  loop(hp_stages,
+    idx = chan*maxst + i;
+    y_prev = mem[hp_y_base + idx];
+    x_prev = mem[hp_x_base + idx];
+    y = hp_a*(y_prev + x - x_prev);
+    mem[hp_x_base + idx] = x;
+    mem[hp_y_base + idx] = y;
+    x = y;
+    i += 1;
+  );
+  x;
+);
+
+// --- cascaded 1-pole LP @2x ---
+function lp_cascade_os(x, chan) local(i,idx,y_prev,y)(
+  i = 0;
+  loop(lp_stages,
+    idx = chan*maxst + i;
+    y_prev = mem[lp_y_base + idx];
+    y = (1-lp_a)*x + lp_a*y_prev;
+    mem[lp_y_base + idx] = y;
+    x = y;
+    i += 1;
+  );
+  x;
+);
+
+// --- reference cascaded HP/LP @1x (for auto-level input measurement) ---
+function filt_ref(x, chan) local(i,idx,y_prev,x_prev,y)(
+  // HP
+  i = 0;
+  loop(hp_stages,
+    idx = chan*maxst + i;
+    y_prev = mem[ref_hp_y_base + idx];
+    x_prev = mem[ref_hp_x_base + idx];
+    y = hp_a_ref*(y_prev + x - x_prev);
+    mem[ref_hp_x_base + idx] = x;
+    mem[ref_hp_y_base + idx] = y;
+    x = y;
+    i += 1;
+  );
+  // LP
+  i = 0;
+  loop(lp_stages,
+    idx = chan*maxst + i;
+    y_prev = mem[ref_lp_y_base + idx];
+    y = (1-lp_a_ref)*x + lp_a_ref*y_prev;
+    mem[ref_lp_y_base + idx] = y;
+    x = y;
+    i += 1;
+  );
+  x;
+);
+
+// --- one oversampled processing step (single channel sample at 2x rate) ---
+function proc_os(x, chan) local(absx,k,y,t)(
+  // Pre HP/LP (cascaded 1-poles at 2x rate)
+  x = hp_cascade_os(x, chan);
+  x = lp_cascade_os(x, chan);
+
+  // Drive + bias
+  x = x*drive_lin + bias;
+  absx = abs(x);
+
+  // Waveshaper styles
+  style == 0 ? (
+    // Tape-ish: soft sat + density
+    y = x/(1+absx);
+    y += 0.10*y*y*y;
+  );
+  style == 1 ? (
+    // Tube-ish: atan
+    k = 1.5;
+    y = (2/pi)*atan(k*x);
+  );
+  style == 2 ? (
+    // Diode-ish: asym exp
+    x >= 0 ? y = 1-exp(-x) : y = -(1-exp(x*0.6));
+    y *= 0.9;
+  );
+  style == 3 ? (
+    // Trans-ish: cubic soft clip
+    absx < 1 ? y = x - (x*x*x)/3 : y = (x<0?-1:1)*(2/3);
+    y *= 1.2;
+  );
+  style == 4 ? (
+    // Rect-ish: harsher asym
+    x >= 0 ? y = x/(1+absx) : (t=x*1.6; y = t/(1+abs(t)););
+  );
+
+  // Cheap DC trim for bias
+  y -= bias*0.25;
+
+  // Tone (tilt) = low shelf then high shelf (biquads @2x)
+  chan == 0 ? (
+    t = ls_b0*y + ls_z1L;
+    ls_z1L = ls_b1*y - ls_a1*t + ls_z2L;
+    ls_z2L = ls_b2*y - ls_a2*t;
+    y = t;
+
+    t = hs_b0*y + hs_z1L;
+    hs_z1L = hs_b1*y - hs_a1*t + hs_z2L;
+    hs_z2L = hs_b2*y - hs_a2*t;
+    y = t;
+  ) : (
+    t = ls_b0*y + ls_z1R;
+    ls_z1R = ls_b1*y - ls_a1*t + ls_z2R;
+    ls_z2R = ls_b2*y - ls_a2*t;
+    y = t;
+
+    t = hs_b0*y + hs_z1R;
+    hs_z1R = hs_b1*y - hs_a1*t + hs_z2R;
+    hs_z2R = hs_b2*y - hs_a2*t;
+    y = t;
+  );
+
+  y;
+);
+
+@slider
+sr  = srate;
+sr2 = sr*2;
+
+// stages from slope menus
+hp_stages = hp_slope <= 3 ? (hp_slope + 1) : (hp_slope == 4 ? 8 : 16);
+lp_stages = lp_slope <= 3 ? (lp_slope + 1) : (lp_slope == 4 ? 8 : 16);
+
+// Total drive
+drive_total_db = drive_db + punish*20;
+drive_lin = exp(log(10)*drive_total_db/20);
+
+// Output gain
+out_lin   = exp(log(10)*out_db/20);
+
+// Mix
+wet = mix/100;
+dry = 1-wet;
+
+// Clamp filters (Hz)
+loc = max(20, min(locut, sr*0.45));
+hic = max(loc+10, min(hicut, sr*0.49));
+
+// Oversampled chain HP/LP coeffs (use sr2)
+hp_a = exp(-2*pi*loc/sr2);
+lp_a = exp(-2*pi*hic/sr2);
+
+// Reference HP/LP coeffs (use sr)
+hp_a_ref = exp(-2*pi*loc/sr);
+lp_a_ref = exp(-2*pi*hic/sr);
+
+// Tilt shelves at sr2: low +tone, high -tone
+rbj_lowshelf_os(tone_db);
+rbj_highshelf_os(-tone_db);
+
+// Decimation lowpass cutoff: <= base-rate Nyquist margin AND <= user HiCut
+dec_fc = min(sr*0.45, hic);
+dec_a  = exp(-2*pi*dec_fc/sr2);
+
+// Auto-level smoothing (fixed time constants)
+auto_tc_ms = 250;   // RMS follower
+gain_tc_ms = 60;    // gain smoothing (reduces pumping)
+auto_a = exp(-1/(sr*auto_tc_ms*0.001));
+gain_a = exp(-1/(sr*gain_tc_ms*0.001));
+
+@sample
+inL = spl0; inR = spl1;
+dryL = inL; dryR = inR;
+
+// --- 2x oversampling (linear interp) + decimation lowpass ---
+// mid-sample (interpolated)
+midL = 0.5*(os_prevL + inL);
+midR = 0.5*(os_prevR + inR);
+
+// process at 2x: first mid, then current
+y1L = proc_os(midL, 0);
+y1R = proc_os(midR, 1);
+y2L = proc_os(inL, 0);
+y2R = proc_os(inR, 1);
+
+// remember last input
+os_prevL = inL;
+os_prevR = inR;
+
+// lowpass at 2x and keep every 2nd sample (after second update)
+dec_yL = (1-dec_a)*y1L + dec_a*dec_yL;
+dec_yL = (1-dec_a)*y2L + dec_a*dec_yL;
+
+dec_yR = (1-dec_a)*y1R + dec_a*dec_yR;
+dec_yR = (1-dec_a)*y2R + dec_a*dec_yR;
+
+wetL = dec_yL;
+wetR = dec_yR;
+
+// --- Auto level (RMS match) ---
+auto ? (
+  refL = filt_ref(inL, 0);
+  refR = filt_ref(inR, 1);
+
+  pin  = 0.5*(refL*refL + refR*refR);
+  pout = 0.5*(wetL*wetL + wetR*wetR);
+
+  auto_in_p  = auto_a*auto_in_p  + (1-auto_a)*pin;
+  auto_out_p = auto_a*auto_out_p + (1-auto_a)*pout;
+
+  // target gain = sqrt(Pin/Pout), with limits to avoid runaway
+  tgt = sqrt((auto_in_p + 0.000000000001) / (auto_out_p + 0.000000000001));
+  tgt < 0.25 ? tgt = 0.25; // -12 dB
+  tgt > 4.0  ? tgt = 4.0;  // +12 dB
+
+  // smooth the gain itself
+  auto_gain = gain_a*auto_gain + (1-gain_a)*tgt;
+
+  wetL *= auto_gain;
+  wetR *= auto_gain;
+) : (
+  auto_gain = 1.0;
+);
+
+// Output
+wetL *= out_lin;
+wetR *= out_lin;
+
+// Mix
+spl0 = dryL*dry + wetL*wet;
+spl1 = dryR*dry + wetR*wet;
+
+@gfx 960 540
+gfx_clear = 0.07;
+gfx_a = 1;
+
+mouse_down = mouse_cap & 1;
+mouse_click = mouse_down && !(ui_last_cap & 1);
+
+mouse_down ? (
+  0;
+) : (
+  ui_drag = 0;
+  ui_drag_slider = 0;
+);
+
+function clamp(v lo hi) ( v < lo ? lo : v > hi ? hi : v; );
+function inRect(x y w h) (mouse_x >= x && mouse_x <= x+w && mouse_y >= y && mouse_y <= y+h);
+function setSlider(idx val lo hi)(
+  val = clamp(val, lo, hi);
+  slider(idx) = val;
+  slider_automate(idx);
+);
+
+function drawKnob(x y r slider_idx lo hi label unit)
+  local(val norm ang vx vy)
+(
+  val = slider(slider_idx);
+  norm = clamp((val - lo) / (hi - lo), 0, 1);
+
+  // knob face
+  gfx_r=0.15; gfx_g=0.15; gfx_b=0.16;
+  gfx_circle(x, y, r, 1, 1);
+  gfx_r=0.6; gfx_g=0.6; gfx_b=0.62;
+  gfx_circle(x, y, r, 0, 1);
+
+  // needle
+  ang = -2.35619449 + (4.71238898 * norm);
+  vx = x + cos(ang) * (r-6);
+  vy = y + sin(ang) * (r-6);
+  gfx_r=0.9; gfx_g=0.9; gfx_b=0.9;
+  gfx_line(x, y, vx, vy);
+
+  // label
+  gfx_x = x - r; gfx_y = y + r + 8;
+  gfx_drawstr(label);
+  gfx_x = x - r; gfx_y = y + r + 22;
+  sprintf(#tmp, "%.1f%s", val, unit);
+  gfx_drawstr(#tmp);
+
+  // drag
+  mouse_down && !ui_drag && inRect(x-r, y-r, r*2, r*2) ? (
+    ui_drag = 1;
+    ui_drag_slider = slider_idx;
+    ui_drag_start_y = mouse_y;
+    ui_drag_start_val = val;
+    ui_drag_min = lo;
+    ui_drag_max = hi;
+  );
+
+  ui_drag && ui_drag_slider == slider_idx ? (
+    delta = (ui_drag_start_y - mouse_y) * (hi - lo) / 180;
+    setSlider(slider_idx, ui_drag_start_val + delta, lo, hi);
+  );
+);
+
+function drawToggle(x y w h slider_idx label)
+  local(on)
+(
+  on = slider(slider_idx) >= 0.5;
+  gfx_r=0.15; gfx_g=0.15; gfx_b=0.15;
+  gfx_rect(x, y, w, h, 1);
+  on ? (gfx_r=0.2; gfx_g=0.7; gfx_b=0.35) : (gfx_r=0.4; gfx_g=0.4; gfx_b=0.4);
+  gfx_rect(x+2, y+2, w-4, h-4, 1);
+  gfx_r=0; gfx_g=0; gfx_b=0;
+  gfx_x = x + 8; gfx_y = y + 6;
+  gfx_drawstr(label);
+  on ? (gfx_x = x + w - 40; gfx_drawstr("ON")) : (gfx_x = x + w - 40; gfx_drawstr("OFF"));
+  mouse_click && inRect(x, y, w, h) ? (
+    setSlider(slider_idx, on ? 0 : 1, 0, 1);
+  );
+);
+
+function slope_db(v) (
+  v == 0 ? 6 :
+  v == 1 ? 12 :
+  v == 2 ? 18 :
+  v == 3 ? 24 :
+  v == 4 ? 48 : 96;
+);
+
+function drawSlope(x y w h slider_idx label)
+  local(val next db)
+(
+  val = slider(slider_idx);
+  db = slope_db(val|0);
+  gfx_r=0.15; gfx_g=0.15; gfx_b=0.15;
+  gfx_rect(x, y, w, h, 1);
+  gfx_r=0.75; gfx_g=0.75; gfx_b=0.75;
+  gfx_x = x + 8; gfx_y = y + 6;
+  sprintf(#tmp, "%s %d dB", label, db);
+  gfx_drawstr(#tmp);
+  mouse_click && inRect(x, y, w, h) ? (
+    next = val + 1;
+    next > 5 ? next = 0;
+    setSlider(slider_idx, next, 0, 5);
+  );
+);
+
+// Header
+gfx_r=0.9; gfx_g=0.9; gfx_b=0.9;
+gfx_x = 36; gfx_y = 20;
+gfx_drawstr("RM SATURATOR");
+gfx_r=0.6; gfx_g=0.6; gfx_b=0.6;
+gfx_x = 36; gfx_y = 44;
+gfx_drawstr("Analog drive");
+
+// Style buttons
+styles_w = 140; styles_h = 32; styles_gap = 14;
+sx = 36; sy = 80;
+style_idx = slider3|0;
+function drawStyleBtn(idx label)
+(
+  x = sx + idx*(styles_w + styles_gap);
+  y = sy;
+  gfx_r=0.16; gfx_g=0.16; gfx_b=0.16;
+  gfx_rect(x, y, styles_w, styles_h, 1);
+  idx == style_idx ? (gfx_r=0.25; gfx_g=0.6; gfx_b=0.85) : (gfx_r=0.4; gfx_g=0.4; gfx_b=0.4);
+  gfx_rect(x+2, y+2, styles_w-4, styles_h-4, 1);
+  gfx_r=0; gfx_g=0; gfx_b=0;
+  gfx_x = x + 8; gfx_y = y + 7;
+  gfx_drawstr(label);
+  mouse_click && inRect(x, y, styles_w, styles_h) ? (
+    setSlider(3, idx, 0, 4);
+  );
+);
+drawStyleBtn(0, "TAPE");
+drawStyleBtn(1, "TUBE");
+drawStyleBtn(2, "DIODE");
+drawStyleBtn(3, "TRANS");
+drawStyleBtn(4, "RECT");
+
+// Knobs
+row1_y = 190;
+row2_y = 330;
+knob_r = 48;
+
+drawKnob(120, row1_y, knob_r, 1, 0, 60, "DRIVE", " dB");
+drawKnob(260, row1_y, knob_r, 5, -12, 12, "TONE", " dB");
+drawKnob(400, row1_y, knob_r, 11, -50, 24, "OUTPUT", " dB");
+drawKnob(540, row1_y, knob_r, 12, 0, 100, "MIX", " %");
+
+drawKnob(160, row2_y, knob_r, 4, -0.5, 0.5, "BIAS", "");
+drawKnob(320, row2_y, knob_r, 6, 20, 300, "LOCUT", " Hz");
+drawKnob(480, row2_y, knob_r, 8, 4000, 20000, "HICUT", " Hz");
+
+// Toggles
+drawToggle(680, 250, 210, 38, 2, "PUNISH");
+drawToggle(680, 300, 210, 38, 10, "AUTO");
+
+// Slopes under controls
+drawSlope(260, 410, 200, 36, 7, "HP SLOPE");
+drawSlope(420, 410, 200, 36, 9, "LP SLOPE");
+
+ui_last_cap = mouse_cap;

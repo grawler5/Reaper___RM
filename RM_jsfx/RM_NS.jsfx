@@ -1,0 +1,26 @@
+desc:RM_NS
+slider1:0<0,100,1>Reduction
+
+@init
+gain = 1;
+
+@slider
+reduction_amt = max(0, min(100, 100 - slider1));
+thresh_db = -10 - (reduction_amt * 0.6);
+reduction_db = 6 + (reduction_amt * 0.42);
+atk_ms = 5 + (reduction_amt * 0.8);
+rel_ms = 120 + (reduction_amt * 5.8);
+atk_coef = exp(-1 / (atk_ms * 0.001 * srate));
+rel_coef = exp(-1 / (rel_ms * 0.001 * srate));
+min_gain = exp(reduction_db * -0.115129254); // -dB to linear
+
+@sample
+inL = spl0;
+inR = spl1;
+level = max(abs(inL), abs(inR));
+level_db = (level > 0) ? (log(level) * 8.685889638) : -150;
+target = (level_db < thresh_db) ? min_gain : 1;
+
+gain = (target > gain) ? (target + (gain - target) * atk_coef) : (target + (gain - target) * rel_coef);
+spl0 = inL * gain;
+spl1 = inR * gain;
