@@ -273,12 +273,25 @@ local function header_row(ctx, ws, scale)
   -- Header content (single line): title on the left, buttons pinned to the right.
   local right_w = w_insp + gap + w_on + gap + w_x
   reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 6 * scale)
-  reaper.ImGui_AlignTextToFramePadding(ctx)
 
-  -- Title
-  ui.push_color(ctx, reaper.ImGui_Col_Text, 0.90, 0.90, 0.90, 1.0)
-  reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
-  pcall(reaper.ImGui_PopStyleColor, ctx)
+  local avail_w = 0
+  if reaper.ImGui_GetContentRegionAvail then
+    avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
+  end
+  local left_w = math.max(0, avail_w - right_w - gap)
+
+  local function draw_title()
+    reaper.ImGui_AlignTextToFramePadding(ctx)
+    ui.push_color(ctx, reaper.ImGui_Col_Text, 0.90, 0.90, 0.90, 1.0)
+    reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
+    pcall(reaper.ImGui_PopStyleColor, ctx)
+  end
+
+  if left_w > 0 and ui.with_child then
+    ui.with_child(ctx, '##hdr_left' .. ws.id, left_w, btn_h, false, 0, draw_title)
+  else
+    draw_title()
+  end
 
   -- Buttons
   reaper.ImGui_SameLine(ctx, 0, 0)
@@ -384,7 +397,8 @@ local function presets_row(ctx, ws, scale)
   reaper.ImGui_PopStyleVar(ctx)
 
   -- Save/Delete (right)
-  reaper.ImGui_SameLine(ctx, 0, gap)
+  reaper.ImGui_SameLine(ctx, 0, 0)
+  _right_align_from_window(ctx, right_w)
   if reaper.ImGui_Button(ctx, 'Save##' .. ws.id, w_save, btn_h) then ws.request_save_preset = true end
   reaper.ImGui_SameLine(ctx, 0, gap)
   if reaper.ImGui_Button(ctx, 'Delete##' .. ws.id, w_del, btn_h) then ws.request_delete_preset = true end
