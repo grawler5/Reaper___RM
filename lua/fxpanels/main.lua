@@ -252,10 +252,10 @@ local function header_row(ctx, ws, scale)
     enabled = reaper.TrackFX_GetEnabled(track, fx)
   end
 
-  local btn_h = 26 * scale
+  local btn_h = 24 * scale
   local gap = 6 * scale
-  local w_insp = 96 * scale
-  local w_on = 54 * scale
+  local w_insp = 92 * scale
+  local w_on = 48 * scale
   local w_x = 28 * scale
 
   -- Header background
@@ -263,7 +263,7 @@ local function header_row(ctx, ws, scale)
     local dl = reaper.ImGui_GetWindowDrawList(ctx)
     local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
     local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
-    local h = 34 * scale
+    local h = 32 * scale
     local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.12, 1.0) or nil
     if dl and col and avail_w > 1 then
       pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + avail_w, y + h, col, 10 * scale)
@@ -284,10 +284,19 @@ local function header_row(ctx, ws, scale)
   reaper.ImGui_SameLine(ctx, 0, 0)
   _right_align_from_window(ctx, right_w)
 
-  local insp_label = ws.show_inspector and 'UI' or 'Inspector'
-  if reaper.ImGui_Button(ctx, insp_label .. '##' .. ws.id, w_insp, btn_h) then
+  if ws.show_inspector then
+    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.24, 0.26, 0.30, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.28, 0.30, 0.34, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.22, 0.24, 0.28, 1.0)
+  else
+    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.18, 0.19, 0.22, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.22, 0.23, 0.26, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.16, 0.17, 0.20, 1.0)
+  end
+  if reaper.ImGui_Button(ctx, 'Inspector##' .. ws.id, w_insp, btn_h) then
     ws.show_inspector = not ws.show_inspector
   end
+  pcall(reaper.ImGui_PopStyleColor, ctx, 3)
   reaper.ImGui_SameLine(ctx, 0, gap)
 
   local on_label = enabled and 'ON' or 'OFF'
@@ -327,7 +336,7 @@ end
 
 local function presets_row(ctx, ws, scale)
   local list = ws.presets or {}
-  local btn_h = 26 * scale
+  local btn_h = 24 * scale
   local gap = 6 * scale
   local w_save = 64 * scale
   local w_del = 74 * scale
@@ -341,7 +350,7 @@ local function presets_row(ctx, ws, scale)
   local combo_w = math.max(160 * scale, avail_w - right_w - gap)
 
   -- Dropdown (left)
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 6 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 5 * scale)
   if reaper.ImGui_PushItemWidth then reaper.ImGui_PushItemWidth(ctx, combo_w) end
 
   local preview = 'Default'

@@ -45,17 +45,32 @@ function panel.render(ctx, track, fx, ui, state)
   local dl_ok = (reaper.ImGui_GetWindowDrawList ~= nil) and (reaper.ImGui_DrawList_AddRectFilled ~= nil) and (reaper.ImGui_ColorConvertDouble4ToU32 ~= nil)
 
   -- Web UI proportions: single unified panel with a bottom readout.
-  local panel_w = 300 * scale
-  local total_h = 460 * scale
-  local main_h = 360 * scale
+  local base_w = 300 * scale
+  local base_total = 460 * scale
+  local base_main = 360 * scale
+
+  local avail_w, avail_h = 0, 0
+  if reaper.ImGui_GetContentRegionAvail then
+    avail_w, avail_h = reaper.ImGui_GetContentRegionAvail(ctx)
+  end
+  local fit = 1.0
+  if type(avail_w) == 'number' and type(avail_h) == 'number' and avail_w > 1 and avail_h > 1 then
+    fit = math.min(1.0, avail_w / base_w, avail_h / base_total)
+  end
+
+  local panel_w = base_w * fit
+  local total_h = base_total * fit
+  local main_h = base_main * fit
   local read_h = total_h - main_h
 
   -- Center the panel area in the window content region
   center_x(ctx, panel_w)
 
   -- Child to keep layout stable and avoid SetCursor* (ReaImGui 0.10.x)
+  local child_started = false
   if reaper.ImGui_BeginChild then
     reaper.ImGui_BeginChild(ctx, '##rm_ns_panel', panel_w, total_h, 0, 0)
+    child_started = true
   end
 
   local x0, y0 = 0, 0
@@ -162,7 +177,7 @@ function panel.render(ctx, track, fx, ui, state)
     pcall(reaper.ImGui_PopStyleColor, ctx)
   end
 
-  if reaper.ImGui_EndChild then
+  if child_started and reaper.ImGui_EndChild then
     reaper.ImGui_EndChild(ctx)
   end
 end
