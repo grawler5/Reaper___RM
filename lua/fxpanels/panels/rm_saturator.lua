@@ -5,7 +5,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 980, win_h = 620, scale_mult = 1.0 }
+panel.meta = { win_w = 980, win_h = 560, scale_mult = 1.0 }
 
 -- Parameter indices (match JSFX in RM_jsfx.zip)
 local P = {
@@ -221,8 +221,8 @@ end
 
 -- A metallic dial that behaves like Web buildRmDialControl.
 local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
-  local size = 92 * scale
-  local pad_y = 6 * scale
+  local size = 86 * scale
+  local pad_y = 4 * scale
   local v = norm(track, fx, pidx)
   local changed = false
 
@@ -342,7 +342,7 @@ local function style_buttons(ctx, track, fx, scale)
   if cur < 0 then cur = 0 end
   if cur > #STYLE - 1 then cur = #STYLE - 1 end
 
-  local btn_h = 32 * scale
+  local btn_h = 30 * scale
   local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx))
   local gap = 8 * scale
   local btn_w = math.max(70 * scale, (avail_w - gap * (#STYLE - 1)) / #STYLE)
@@ -446,7 +446,7 @@ function panel.render(ctx, track, fx, ui, state)
   -- Host panel background (rmSatPanel)
   local avail_w, avail_h = reaper.ImGui_GetContentRegionAvail(ctx)
   local max_w = 860 * scale
-  local max_h = 500 * scale
+  local max_h = 480 * scale
   local w = math.min(avail_w, max_w)
   local h = math.min(avail_h, max_h)
 
@@ -488,10 +488,10 @@ function panel.render(ctx, track, fx, ui, state)
   end
 
   -- Create a child region to place widgets (so cursor advances correctly)
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_WindowPadding), 18 * scale, 20 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_WindowPadding), 16 * scale, 16 * scale)
   reaper.ImGui_BeginChild(ctx, '##rm_sat_panel', w, h, 0, 0)
   reaper.ImGui_PopStyleVar(ctx, 1)
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_ItemSpacing), 14 * scale, 14 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_ItemSpacing), 10 * scale, 10 * scale)
 
   -- Header
   reaper.ImGui_PushStyleColor(ctx, E(reaper.ImGui_Col_Text), reaper.ImGui_ColorConvertDouble4ToU32(0.95, 0.90, 0.86, 1.0))
@@ -506,12 +506,12 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_PopStyleColor(ctx, 1)
   end
 
-  reaper.ImGui_Dummy(ctx, 1, 6 * scale)
+  reaper.ImGui_Dummy(ctx, 1, 4 * scale)
 
   -- Style row
   style_buttons(ctx, track, fx, scale)
 
-  reaper.ImGui_Dummy(ctx, 1, 10 * scale)
+  reaper.ImGui_Dummy(ctx, 1, 6 * scale)
 
   -- Main 2 blocks
   local gap = 14 * scale
@@ -533,11 +533,11 @@ function panel.render(ctx, track, fx, ui, state)
       reaper.ImGui_EndTable(ctx)
     end
 
-    reaper.ImGui_Dummy(ctx, 1, 8 * scale)
+    reaper.ImGui_Dummy(ctx, 1, 6 * scale)
     local auto_on = bool_get(track, fx, P.auto)
     local pun_on = bool_get(track, fx, P.punish)
-    local bw = 110 * scale
-    local bh = 28 * scale
+    local bw = 104 * scale
+    local bh = 26 * scale
     if mini_toggle_button(ctx, 'AUTO', auto_on, bw, bh, scale) then bool_toggle(track, fx, P.auto) end
     reaper.ImGui_SameLine(ctx, 0, 10 * scale)
     if mini_toggle_button(ctx, 'PUNISH', pun_on, bw, bh, scale) then bool_toggle(track, fx, P.punish) end
@@ -560,7 +560,7 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_EndTable(ctx)
   end
 
-  reaper.ImGui_Dummy(ctx, 1, 12 * scale)
+  reaper.ImGui_Dummy(ctx, 1, 8 * scale)
 
   -- Slopes
   slope_combo(ctx, 'HP SLOPE', track, fx, P.hp_slope, scale)
