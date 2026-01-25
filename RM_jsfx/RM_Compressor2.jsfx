@@ -11,6 +11,7 @@ slider6:0<-24,24,0.1>Output (dB)
 slider7:0<0,1,1{Off,On}>Trick
 slider8:0<0,1,1>-Feedback
 slider9:0<0,1,1>-Sidechain
+slider23:0<0,2,1{Auto,SC 3/4,SC 5/6}>Sidechain Source
 slider10:0<0,1,1>-Metermode
 
 slider11:3<0,5,0.01>-Meterspeed
@@ -627,10 +628,13 @@ inL = spl0; inR = spl1;
 );
 
 sidechain_on = slider9 >= 0.5;
+sc_mode = slider23|0;
 sc1 = max(abs(spl2), abs(spl3));
 sc2 = max(abs(spl4), abs(spl5));
-scL = sc1 >= sc2 ? spl2 : spl4;
-scR = sc1 >= sc2 ? spl3 : spl5;
+sc_auto = sc1 >= sc2 ? 0 : 1;
+sc_sel = sc_mode == 0 ? sc_auto : (sc_mode == 1 ? 0 : 1);
+scL = sc_sel == 0 ? spl2 : spl4;
+scR = sc_sel == 0 ? spl3 : spl5;
 detL = sidechain_on ? scL : inL;
 detR = sidechain_on ? scR : inR;
 
