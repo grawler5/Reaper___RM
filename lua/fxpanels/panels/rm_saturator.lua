@@ -5,7 +5,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 980, win_h = 560, scale_mult = 1.0 }
+panel.meta = { win_w = 980, win_h = 660, scale_mult = 1.0 }
 
 -- Parameter indices (match JSFX in RM_jsfx.zip)
 local P = {
@@ -445,19 +445,8 @@ function panel.render(ctx, track, fx, ui, state)
 
   -- Host panel background (rmSatPanel)
   local avail_w, avail_h = reaper.ImGui_GetContentRegionAvail(ctx)
-  local max_w = 860 * scale
-  local max_h = 480 * scale
-  local w = math.min(avail_w, max_w)
-  local h = math.min(avail_h, max_h)
-
-  -- Center (no SetCursorPos for ReaImGui 0.10.x)
-  if reaper.ImGui_Dummy and reaper.ImGui_SameLine and reaper.ImGui_GetContentRegionAvail then
-    local avail_w2 = select(1, reaper.ImGui_GetContentRegionAvail(ctx))
-    if type(avail_w2) == 'number' then
-      local pad = (avail_w2 - w) * 0.5
-      if pad > 1 then reaper.ImGui_Dummy(ctx, pad, 0); reaper.ImGui_SameLine(ctx) end
-    end
-  end
+  local w = type(avail_w) == 'number' and avail_w or 0
+  local h = type(avail_h) == 'number' and avail_h or 0
   local x0, y0 = compat.get_cursor_screen_pos(ctx)
   local dl = reaper.ImGui_GetWindowDrawList(ctx)
 

@@ -205,15 +205,12 @@ function panel.render(ctx, track, fx, ui, state)
   end
   local fit = 1.0
   if type(avail_w) == 'number' and type(avail_h) == 'number' and avail_w > 1 and avail_h > 1 then
-    fit = math.min(1.0, avail_w / base_w, avail_h / base_total)
+    fit = math.min(avail_w / base_w, avail_h / base_total)
   end
 
   local draw_scale = scale * fit
-  local panel_w = base_w * fit
-  local total_h = base_total * fit
-
-  -- Center the panel area in the window content region
-  center_x(ctx, panel_w)
+  local panel_w = type(avail_w) == 'number' and avail_w or (base_w * fit)
+  local total_h = type(avail_h) == 'number' and avail_h or (base_total * fit)
 
   -- Child to keep layout stable and avoid SetCursor* (ReaImGui 0.10.x)
   local child_started = false
