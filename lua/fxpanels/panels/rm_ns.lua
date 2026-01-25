@@ -69,8 +69,8 @@ function panel.render_header(ctx, ws, scale, ui)
     local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
     local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
     local h = 30 * scale
-    local top = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.16, 0.16, 0.16, 1.0) or nil
-    local bot = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.12, 1.0) or nil
+    local top = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.09, 0.10, 0.12, 1.0) or nil
+    local bot = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.09, 0.10, 0.12, 1.0) or nil
     if dl and top and bot and avail_w > 1 then
       if reaper.ImGui_DrawList_AddRectFilledMultiColor then
         reaper.ImGui_DrawList_AddRectFilledMultiColor(dl, x, y, x + avail_w, y + h, top, top, bot, bot)
@@ -254,7 +254,7 @@ function panel.render(ctx, track, fx, ui, state)
   if dl_ok then
     local dl = reaper.ImGui_GetWindowDrawList(ctx)
 
-    local r = 20 * draw_scale
+    local r = 22 * draw_scale
     local bg1 = reaper.ImGui_ColorConvertDouble4ToU32(0.42, 0.45, 0.48, 1.0) -- #6b737b
     local bg2 = reaper.ImGui_ColorConvertDouble4ToU32(0.17, 0.19, 0.22, 1.0) -- #2b3138
     local bd  = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.55)
