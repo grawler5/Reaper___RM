@@ -221,7 +221,7 @@ end
 
 -- A metallic dial that behaves like Web buildRmDialControl.
 local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
-  local size = 86 * scale
+  local size = 92 * scale
   local pad_y = 6 * scale
   local v = norm(track, fx, pidx)
   local changed = false
@@ -251,32 +251,34 @@ local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
 
   -- Face (radial-ish gradient via nested circles)
   local col_edge = reaper.ImGui_ColorConvertDouble4ToU32(0.10, 0.07, 0.05, 1.0) -- #1a120d-ish
-  local col_mid = reaper.ImGui_ColorConvertDouble4ToU32(0.45, 0.45, 0.45, 1.0)
-  local col_hi = reaper.ImGui_ColorConvertDouble4ToU32(0.92, 0.92, 0.92, 1.0)
+  local col_mid = reaper.ImGui_ColorConvertDouble4ToU32(0.52, 0.52, 0.52, 1.0)
+  local col_hi = reaper.ImGui_ColorConvertDouble4ToU32(0.95, 0.95, 0.95, 1.0)
 
   if reaper.ImGui_DrawList_AddCircleFilled then
     reaper.ImGui_DrawList_AddCircleFilled(dl, cx, cy, r_outer, col_edge)
     -- inner layers
-    local steps = 10
+    local steps = 12
     for i = 0, steps - 1 do
       local t = i / (steps - 1)
       local rr = r_inner * (1 - t * 0.55)
       -- blend hi->mid->edge
-      local r1 = 0.92 * (1 - t) + 0.45 * t
-      local g1 = 0.92 * (1 - t) + 0.45 * t
-      local b1 = 0.92 * (1 - t) + 0.45 * t
+      local r1 = 0.95 * (1 - t) + 0.52 * t
+      local g1 = 0.95 * (1 - t) + 0.52 * t
+      local b1 = 0.95 * (1 - t) + 0.52 * t
       if t > 0.55 then
         local t2 = (t - 0.55) / 0.45
-        r1 = 0.45 * (1 - t2) + 0.20 * t2
-        g1 = 0.45 * (1 - t2) + 0.20 * t2
-        b1 = 0.45 * (1 - t2) + 0.20 * t2
+        r1 = 0.52 * (1 - t2) + 0.22 * t2
+        g1 = 0.52 * (1 - t2) + 0.22 * t2
+        b1 = 0.52 * (1 - t2) + 0.22 * t2
       end
       local col = reaper.ImGui_ColorConvertDouble4ToU32(r1, g1, b1, 1.0)
-      reaper.ImGui_DrawList_AddCircleFilled(dl, cx - size * 0.08, cy - size * 0.10, rr, col)
+      reaper.ImGui_DrawList_AddCircleFilled(dl, cx - size * 0.06, cy - size * 0.08, rr, col)
     end
     -- rim
     if reaper.ImGui_DrawList_AddCircle then
       reaper.ImGui_DrawList_AddCircle(dl, cx, cy, r_outer - 1, col_edge, 0, 2.0 * scale)
+      local rim = reaper.ImGui_ColorConvertDouble4ToU32(1, 1, 1, 0.12)
+      reaper.ImGui_DrawList_AddCircle(dl, cx, cy, r_outer - 3, rim, 0, 1.0 * scale)
     end
   end
 
@@ -288,7 +290,7 @@ local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
     local nx = cx + math.cos(ang) * (r_outer * 0.72)
     local ny = cy + math.sin(ang) * (r_outer * 0.72)
     local needle = reaper.ImGui_ColorConvertDouble4ToU32(0.10, 0.07, 0.05, 1.0)
-    reaper.ImGui_DrawList_AddLine(dl, cx, cy, nx, ny, needle, 3.0 * scale)
+    reaper.ImGui_DrawList_AddLine(dl, cx, cy, nx, ny, needle, 2.4 * scale)
   end
 
   -- Value
@@ -443,8 +445,8 @@ function panel.render(ctx, track, fx, ui, state)
 
   -- Host panel background (rmSatPanel)
   local avail_w, avail_h = reaper.ImGui_GetContentRegionAvail(ctx)
-  local max_w = 900 * scale
-  local max_h = 520 * scale
+  local max_w = 860 * scale
+  local max_h = 500 * scale
   local w = math.min(avail_w, max_w)
   local h = math.min(avail_h, max_h)
 
