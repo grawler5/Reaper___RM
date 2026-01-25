@@ -7,6 +7,9 @@ local panels = {
   rm_ns = require('fxpanels.panels.rm_ns'),
   rm_compressor2 = require('fxpanels.panels.rm_compressor2'),
   rm_eq2 = require('fxpanels.panels.rm_eq2'),
+  rm_preamp = require('fxpanels.panels.rm_preamp'),
+  rm_1175 = require('fxpanels.panels.rm_1175'),
+  rm_la1a = require('fxpanels.panels.rm_la1a'),
 }
 
 -- Trim + normalize: remove "JS:" prefix, collapse spaces.
@@ -50,6 +53,15 @@ function registry.match_panel_key(fx_name)
   end
   if k:find('rm_compressor2', 1, true) or k:find('rm_comp2', 1, true) then
     return 'rm_compressor2'
+  end
+  if k:find('rm_preamp', 1, true) or k:find('preamp', 1, true) then
+    return 'rm_preamp'
+  end
+  if k:find('rm_1175', 1, true) or k:find('1175', 1, true) or k:find('nc76', 1, true) then
+    return 'rm_1175'
+  end
+  if k:find('rm_la1a', 1, true) or k:find('la1a', 1, true) then
+    return 'rm_la1a'
   end
 
   -- If someone adds new panels, allow exact matches.

@@ -617,23 +617,24 @@ inR ? (oops = 0):(inR = spl1);
 clean0 = spl0;
 clean1 = spl1;
 
-slider8 == 1 ?(
+slider8 == 1 ? (
 inL = feedL;//spl0;
 inR = feedR;// spl1;
-):(
+) : (
 inL = spl0; inR = spl1;
 );
-slider9 == 1 ? (
-inL = spl2; inR = spl3;
-);
+
+sidechain_on = slider9 >= 0.5;
+detL = sidechain_on ? spl2 : inL;
+detR = sidechain_on ? spl3 : inR;
 
 hp_hz = slider19;
 lp_hz = slider18;
 hp_hz > lp_hz ? hp_hz = lp_hz;
 hp_a = exp(-2*$pi*hp_hz/srate);
 lp_a = exp(-2*$pi*lp_hz/srate);
-detHpL = hp_a * (detHpL + inL - detHpX1L); detHpX1L = inL;
-detHpR = hp_a * (detHpR + inR - detHpX1R); detHpX1R = inR;
+detHpL = hp_a * (detHpL + detL - detHpX1L); detHpX1L = detL;
+detHpR = hp_a * (detHpR + detR - detHpX1R); detHpX1R = detR;
 detLpL = detLpL + (1 - lp_a) * (detHpL - detLpL);
 detLpR = detLpR + (1 - lp_a) * (detHpR - detLpR);
 
