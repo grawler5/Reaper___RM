@@ -6,10 +6,22 @@ local panels = {
   rm_saturator = require('fxpanels.panels.rm_saturator'),
   rm_ns = require('fxpanels.panels.rm_ns'),
   rm_compressor2 = require('fxpanels.panels.rm_compressor2'),
+  rm_comp2 = require('fxpanels.panels.rm_comp2'),
+  rm_compressor = require('fxpanels.panels.rm_compressor'),
   rm_eq2 = require('fxpanels.panels.rm_eq2'),
+  rm_eq4 = require('fxpanels.panels.rm_eq4'),
   rm_preamp = require('fxpanels.panels.rm_preamp'),
   rm_1175 = require('fxpanels.panels.rm_1175'),
   rm_la1a = require('fxpanels.panels.rm_la1a'),
+  rm_gate = require('fxpanels.panels.rm_gate'),
+  rm_deesser = require('fxpanels.panels.rm_deesser'),
+  rm_limiter2 = require('fxpanels.panels.rm_limiter2'),
+  rm_kicker50hz = require('fxpanels.panels.rm_kicker50hz'),
+  rm_delaymachine = require('fxpanels.panels.rm_delaymachine'),
+  rm_vox = require('fxpanels.panels.rm_vox'),
+  rm_eqt1a = require('fxpanels.panels.rm_eqt1a'),
+  rm_lexikan2 = require('fxpanels.panels.rm_lexikan2'),
+  rm_air = require('fxpanels.panels.rm_air'),
 }
 
 -- Trim + normalize: remove "JS:" prefix, collapse spaces.
@@ -54,6 +66,15 @@ function registry.match_panel_key(fx_name)
   if k:find('rm_compressor2', 1, true) or k:find('rm_comp2', 1, true) then
     return 'rm_compressor2'
   end
+  if k:find('rm_compressor', 1, true) then
+    return 'rm_compressor'
+  end
+  if k:find('rm_gate', 1, true) then
+    return 'rm_gate'
+  end
+  if k:find('rm_eq4', 1, true) then
+    return 'rm_eq4'
+  end
   if k:find('rm_preamp', 1, true) or k:find('preamp', 1, true) then
     return 'rm_preamp'
   end
@@ -62,6 +83,30 @@ function registry.match_panel_key(fx_name)
   end
   if k:find('rm_la1a', 1, true) or k:find('la1a', 1, true) then
     return 'rm_la1a'
+  end
+  if k:find('rm_deesser', 1, true) then
+    return 'rm_deesser'
+  end
+  if k:find('rm_limiter2', 1, true) then
+    return 'rm_limiter2'
+  end
+  if k:find('rm_kicker', 1, true) or k:find('kicker50hz', 1, true) then
+    return 'rm_kicker50hz'
+  end
+  if k:find('rm_delaymachine', 1, true) or k:find('delaymachine', 1, true) then
+    return 'rm_delaymachine'
+  end
+  if k:find('rm_vox', 1, true) then
+    return 'rm_vox'
+  end
+  if k:find('rm_eqt1a', 1, true) then
+    return 'rm_eqt1a'
+  end
+  if k:find('rm_lexikan2', 1, true) then
+    return 'rm_lexikan2'
+  end
+  if k:find('rm_air', 1, true) then
+    return 'rm_air'
   end
 
   -- If someone adds new panels, allow exact matches.
