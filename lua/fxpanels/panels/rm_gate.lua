@@ -72,7 +72,11 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, border, 20 * scale, 0, 1.0)
   end
 
-  reaper.ImGui_Dummy(ctx, panel_w, panel_h)
+  if reaper.ImGui_InvisibleButton then
+    reaper.ImGui_InvisibleButton(ctx, '##rm_gate_panel', panel_w, panel_h)
+  else
+    reaper.ImGui_Dummy(ctx, panel_w, panel_h)
+  end
 
   local meter_w = 86 * scale
   local meter_h = 260 * scale
@@ -159,27 +163,13 @@ function panel.render(ctx, track, fx, ui, state)
   reaper.ImGui_SameLine(ctx, 0, 12 * scale)
   knob(ctx, track, fx, ui, scale, 'Range', map.range)
 
-  if map.threshold ~= nil and reaper.ImGui_InvisibleButton and reaper.ImGui_GetMousePos then
-    local prev_x, prev_y = reaper.ImGui_GetCursorPos(ctx)
-    local win_x, win_y = 0, 0
-    if reaper.ImGui_GetWindowPos then
-      win_x, win_y = reaper.ImGui_GetWindowPos(ctx)
-    end
-    local local_x = meter_x - (win_x or 0)
-    local local_y = meter_y - (win_y or 0)
-    if local_x < 0 then local_x = 0 end
-    if local_y < 0 then local_y = 0 end
-    if reaper.ImGui_SetCursorPos then
-      reaper.ImGui_SetCursorPos(ctx, local_x, local_y)
-    end
-    reaper.ImGui_InvisibleButton(ctx, '##rm_gate_thresh', meter_w, meter_h)
-    if reaper.ImGui_IsItemActive(ctx) then
-      local _, my = reaper.ImGui_GetMousePos(ctx)
-      local rel = compat.clamp((my - meter_y) / meter_h, 0, 1)
-      params.set_norm(track, fx, map.threshold, 1.0 - rel)
-    end
-    if reaper.ImGui_SetCursorPos then
-      reaper.ImGui_SetCursorPos(ctx, prev_x, prev_y)
+  if map.threshold ~= nil and reaper.ImGui_GetMousePos and reaper.ImGui_IsMouseDown then
+    local mx, my = reaper.ImGui_GetMousePos(ctx)
+    if mx >= meter_x and mx <= meter_x + meter_w and my >= meter_y and my <= meter_y + meter_h then
+      if reaper.ImGui_IsMouseDown(ctx, 0) then
+        local rel = compat.clamp((my - meter_y) / meter_h, 0, 1)
+        params.set_norm(track, fx, map.threshold, 1.0 - rel)
+      end
     end
   end
 end
