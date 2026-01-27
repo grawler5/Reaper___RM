@@ -167,6 +167,8 @@ function panel.render(ctx, track, fx, ui, state)
     end
     local local_x = meter_x - (win_x or 0)
     local local_y = meter_y - (win_y or 0)
+    if local_x < 0 then local_x = 0 end
+    if local_y < 0 then local_y = 0 end
     if reaper.ImGui_SetCursorPos then
       reaper.ImGui_SetCursorPos(ctx, local_x, local_y)
     end
