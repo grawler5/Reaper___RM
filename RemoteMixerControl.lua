@@ -180,13 +180,18 @@ local function draw_scenes_manager()
   local data = state.scenes_data
   local cur = scenes_current(data)
 
-  reaper.ImGui_Text(ctx, 'Scenes manager (project)')
-  reaper.ImGui_SameLine(ctx)
-  if reaper.ImGui_Button(ctx, 'Save##sc') then scenes_save(data) end
-  reaper.ImGui_SameLine(ctx)
-  if reaper.ImGui_Button(ctx, 'Reload##sc') then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
+  local card_open, card_child, card_scope = ui.card_begin(ctx, 'sc_card', 1.0, 0, 0)
+  if card_open then
+    ui.section_title(ctx, 'Scenes manager (project)')
+    local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
+    reaper.ImGui_SameLine(ctx, 0, 8)
+    if ui.button_secondary(ctx, 'Save##sc', 1.0) then scenes_save(data) end
+    reaper.ImGui_SameLine(ctx, 0, 8)
+    if ui.button_secondary(ctx, 'Reload##sc', 1.0) then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
+    ui.toolbar_end(ctx, toolbar_scope)
 
-  reaper.ImGui_Separator(ctx)
+    reaper.ImGui_Separator(ctx)
+  end
 
   -- Scene selector
   local cur_name = cur and cur.name or 'main'
@@ -204,7 +209,7 @@ local function draw_scenes_manager()
   end
 
   reaper.ImGui_SameLine(ctx)
-  if reaper.ImGui_Button(ctx, 'Add##sc') then
+  if ui.button_secondary(ctx, 'Add##sc', 1.0) then
     local ok, name = reaper.GetUserInputs('New scene', 1, 'Scene name', '')
     if ok and name and name:gsub('%s+', '') ~= '' then
       local clean = name:gsub('^%s+', ''):gsub('%s+$', '')
@@ -220,7 +225,7 @@ local function draw_scenes_manager()
   end
 
   reaper.ImGui_SameLine(ctx)
-  if reaper.ImGui_Button(ctx, 'Delete##sc') then
+  if ui.button_secondary(ctx, 'Delete##sc', 1.0) then
     if cur and cur.name ~= 'main' then
       data.scenes = (function()
         local next = {}
@@ -233,7 +238,10 @@ local function draw_scenes_manager()
     end
   end
 
-  if not cur then return end
+  if not cur then
+    ui.card_end(ctx, card_child, card_scope)
+    return
+  end
 
   -- Master track for scene
   local tracks = get_tracks_flat()
@@ -291,7 +299,7 @@ local function draw_scenes_manager()
   if reaper.ImGui_TreeNodeFlags_DefaultOpen then tn_flags2 = reaper.ImGui_TreeNodeFlags_DefaultOpen() end
   if reaper.ImGui_CollapsingHeader(ctx, 'Tracks in scene##sc', tn_flags2) then
     state.scenes_search = state.scenes_search or ''
-    local changed, q = reaper.ImGui_InputText(ctx, 'Search##sc', state.scenes_search)
+    local changed, q = ui.input_text_web(ctx, 'Search##sc', state.scenes_search, 1.0, 260)
     if changed then state.scenes_search = q end
 
     -- ReaImGui's BeginChild expects numeric flags (Dear ImGui's old 'border' bool is not supported).
@@ -306,9 +314,9 @@ local function draw_scenes_manager()
             local on = scene_has(cur, t.guid)
             local is_master = (cur.name ~= 'main' and type(cur.masterGuid) == 'string' and cur.masterGuid ~= '' and cur.masterGuid == t.guid)
             local toggled, v = reaper.ImGui_Checkbox(ctx, string.format('%d: %s##sc_t_%s', t.idx or t.i or 0, t.name or t.guid, t.guid), on)
-            reaper.ImGui_SameLine(ctx)
+            reaper.ImGui_SameLine(ctx, 0, 6)
             local mlabel = is_master and 'M*' or 'M'
-            if reaper.ImGui_Button(ctx, mlabel .. '##sc_m_' .. t.guid) then
+            if ui.button_ghost(ctx, mlabel .. '##sc_m_' .. t.guid, 1.0) then
               if cur.name ~= 'main' then
                 if is_master then cur.masterGuid = '' else cur.masterGuid = t.guid end
                 scenes_save(data)
@@ -324,6 +332,7 @@ local function draw_scenes_manager()
       reaper.ImGui_EndChild(ctx)
     end
   end
+  ui.card_end(ctx, card_child, card_scope)
 end
 local function hb_write(key)
   ext_set(key, string.format('%.6f', now()), false)
@@ -349,6 +358,13 @@ join_path = function(a, b)
 end
 
 local SCRIPT_DIR = get_script_dir()
+do
+  local base = join_path(SCRIPT_DIR, 'lua')
+  package.path = base .. '/?.lua;' .. base .. '/?/init.lua;' .. package.path
+end
+
+local ui = require('fxpanels.ui')
+local theme = require('fxpanels.theme')
 
 local function get_script_path(name)
   return join_path(SCRIPT_DIR, name)
@@ -644,9 +660,11 @@ local function draw_window()
   end
   reaper.ImGui_SetNextWindowSize(ctx, 720, 460, reaper.ImGui_Cond_Appearing())
 
+  local sv, sc = theme.push(ctx, 1.0)
   local began_ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'ReaperRM Control', true)
   if not began_ok then
     state.ui_visible = false
+    theme.pop(ctx, sv, sc)
     return
   end
 
@@ -656,22 +674,24 @@ local function draw_window()
   end
 
   if visible then
-    reaper.ImGui_Text(ctx, 'Remote Mixer Control')
-    reaper.ImGui_SameLine(ctx)
+    ui.section_title(ctx, 'Remote Mixer Control')
+    local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
+    reaper.ImGui_SameLine(ctx, 0, 8)
 
-    if reaper.ImGui_Button(ctx, state.show_diag and 'Hide diagnostics' or 'Show diagnostics') then
+    if ui.button_secondary(ctx, state.show_diag and 'Hide diagnostics' or 'Show diagnostics', 1.0) then
       state.show_diag = not state.show_diag
       if state.show_diag then poll_logs() end
     end
-    reaper.ImGui_SameLine(ctx)
-    if reaper.ImGui_Button(ctx, state.show_scenes and 'Hide scenes' or 'Show scenes') then
+    reaper.ImGui_SameLine(ctx, 0, 8)
+    if ui.button_secondary(ctx, state.show_scenes and 'Hide scenes' or 'Show scenes', 1.0) then
       state.show_scenes = not state.show_scenes
     end
-    reaper.ImGui_SameLine(ctx)
-    if reaper.ImGui_Button(ctx, 'Hide window') then
+    reaper.ImGui_SameLine(ctx, 0, 8)
+    if ui.button_ghost(ctx, 'Hide window', 1.0) then
       state.ui_visible = false
       ext_set('ControlUIVisible', '0', false)
     end
+    ui.toolbar_end(ctx, toolbar_scope)
 
     reaper.ImGui_Separator(ctx)
 
@@ -682,7 +702,7 @@ local function draw_window()
 
     local st = state.status or {}
     reaper.ImGui_Text(ctx, 'Server: ' .. ((st.running and 'running') or 'stopped'))
-    reaper.ImGui_Text(ctx, 'URL: ' .. url_for(st))
+    ui.caption_muted(ctx, 'URL: ' .. url_for(st))
 
     local bridge_conn = tostring(ext_get('BridgeConnected')) == '1'
     local bridge_err = tostring(ext_get('BridgeLastError') or '')
@@ -691,7 +711,7 @@ local function draw_window()
       reaper.ImGui_TextWrapped(ctx, 'Bridge error: ' .. bridge_err)
     end
 
-    if reaper.ImGui_Button(ctx, 'Start all') then
+    if ui.button_primary(ctx, 'Start all', 1.0) then
       spawn_daemon()
       poll_status()
       start_bridge()
@@ -699,14 +719,14 @@ local function draw_window()
       ext_set('FxReplaceEnabled', '1', true)
     end
     reaper.ImGui_SameLine(ctx)
-    if reaper.ImGui_Button(ctx, 'Stop all') then
+    if ui.button_secondary(ctx, 'Stop all', 1.0) then
       ext_set('FxPanelsStop', '1', false)
       stop_bridge()
       send_control('stop')
       poll_status()
     end
     reaper.ImGui_SameLine(ctx)
-    if reaper.ImGui_Button(ctx, 'Restart server') then
+    if ui.button_secondary(ctx, 'Restart server', 1.0) then
       send_control('restart')
       poll_status()
     end
@@ -714,15 +734,12 @@ local function draw_window()
     reaper.ImGui_Separator(ctx)
 
     local enabled = tostring(ext_get('FxReplaceEnabled')) == '1'
-    if reaper.ImGui_Button(ctx, enabled and 'FX replacement: ON' or 'FX replacement: OFF') then
+    if ui.button_secondary(ctx, enabled and 'FX replacement: ON' or 'FX replacement: OFF', 1.0) then
       enabled = not enabled
       ext_set('FxReplaceEnabled', enabled and '1' or '0', true)
     end
-    reaper.ImGui_SameLine(ctx)
-    if reaper.ImGui_Button(ctx, 'Refresh') then
-      poll_status()
-      if state.show_diag then poll_logs() end
-    end
+    reaper.ImGui_SameLine(ctx, 0, 8)
+    ui.caption_muted(ctx, string.format('Last updated %.1fs ago', math.max(0, now() - (state.last_poll or 0))))
 
     if state.error and state.error ~= '' then
       reaper.ImGui_Separator(ctx)
@@ -731,13 +748,22 @@ local function draw_window()
 
     if state.show_diag then
       reaper.ImGui_Separator(ctx)
-      reaper.ImGui_Text(ctx, 'Diagnostics')
-      local child_ok, child_visible = pcall(reaper.ImGui_BeginChild, ctx, 'rm_diag', 0, 0, true)
+      ui.section_title(ctx, 'Diagnostics')
+      local child_flags = 0
+      if reaper.ImGui_ChildFlags_Border then
+        child_flags = reaper.ImGui_ChildFlags_Border()
+      elseif reaper.ImGui_ChildFlags_Borders then
+        child_flags = reaper.ImGui_ChildFlags_Borders()
+      end
+      local child_ok, child_visible = pcall(reaper.ImGui_BeginChild, ctx, 'rm_diag', 0, 0, child_flags)
       if child_ok and child_visible then
         reaper.ImGui_TextWrapped(ctx, 'BridgeHB: ' .. tostring(ext_get('BridgeHB')))
         reaper.ImGui_TextWrapped(ctx, 'ControlHB: ' .. tostring(ext_get('ControlHB')))
         reaper.ImGui_TextWrapped(ctx, 'FxPanelsHB: ' .. tostring(ext_get('FxPanelsHB')))
         reaper.ImGui_Separator(ctx)
+        if ui.button_secondary(ctx, 'Reload logs', 1.0) then
+          poll_logs()
+        end
         for _, line in ipairs(state.logs or {}) do
           reaper.ImGui_TextWrapped(ctx, line)
         end
@@ -747,6 +773,7 @@ local function draw_window()
   end
 
   pcall(reaper.ImGui_End, ctx)
+  theme.pop(ctx, sv, sc)
 end
 
 -- ---------- main loop ----------
