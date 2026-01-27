@@ -5,7 +5,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 980, win_h = 660, scale_mult = 1.0 }
+panel.meta = { win_w = 900, win_h = 640, scale_mult = 1.0 }
 
 -- Parameter indices (match JSFX in RM_jsfx.zip)
 local P = {
@@ -423,7 +423,7 @@ local function slope_combo(ctx, label, track, fx, pidx, scale)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * 0.75
+  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * (panel.meta.scale_mult or 1.0) * 0.75
 
   -- If we can't draw, fall back to the inspector-like UI.
   if not (

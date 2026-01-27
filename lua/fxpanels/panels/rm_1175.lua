@@ -3,7 +3,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 940, win_h = 300 }
+panel.meta = { win_w = 520, win_h = 560, scale_mult = 1.0 }
 
 local BASE_W = 906
 local BASE_H = 213
@@ -20,6 +20,7 @@ end
 
 local function panel_scale(ctx, state)
   local scale = (state and (state.ui_scale or state.scale)) or 1.0
+  scale = scale * (panel.meta.scale_mult or 1.0)
   local base_w = BASE_W * scale
   local base_h = BASE_H * scale
   local avail_w, avail_h = 0, 0

@@ -3,7 +3,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 980, win_h = 640, scale_mult = 1.0 }
+panel.meta = { win_w = 920, win_h = 700, scale_mult = 1.0 }
 
 local P = {
   locut_on = 0,
@@ -295,7 +295,7 @@ local function draw_graph(ctx, track, fx, scale, s)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = (state.ui_scale or state.scale or 1.0)
+  local scale = (state.ui_scale or state.scale or 1.0) * (panel.meta.scale_mult or 1.0)
   local s = ensure_state(state)
 
   -- top bar

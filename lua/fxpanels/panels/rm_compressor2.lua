@@ -3,7 +3,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 820, win_h = 560, scale_mult = 1.0 }
+panel.meta = { win_w = 720, win_h = 620, scale_mult = 0.78 }
 
 local P = {
   threshold = 0,
@@ -74,7 +74,7 @@ local function draw_param_hslider(ctx, track, fx, ui, scale, label, param, width
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = (state.ui_scale or state.scale or 1.0)
+  local scale = (state.ui_scale or state.scale or 1.0) * (panel.meta.scale_mult or 1.0)
 
   local function default_norm(param)
     if params.get_default_norm then
