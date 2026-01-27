@@ -226,17 +226,27 @@ local function draw_graph(ctx, track, fx, scale, s)
 
   -- spectrum
   local spec_on = params.get_norm(track, fx, P.spectrum_on) > 0.5
-  if spec_on and reaper.ImGui_DrawList_AddPolyline then
+  if spec_on then
     local pts = {}
     for i = 0, 31 do
       local v = params.get_norm(track, fx, P.spec_base + i)
       local xx = x0 + w * (i / 31)
       local yy = y0 + h * (1.0 - compat.clamp(v, 0, 1))
-      pts[#pts+1] = xx
-      pts[#pts+1] = yy
+      pts[#pts + 1] = xx
+      pts[#pts + 1] = yy
     end
     local col = color_u32(0.30, 0.60, 0.95, 0.35)
-    reaper.ImGui_DrawList_AddPolyline(draw, pts, col, false, 2.0)
+    if reaper.ImGui_DrawList_AddPolyline and reaper.new_array then
+      local arr = reaper.new_array(#pts)
+      for i = 1, #pts do
+        arr[i] = pts[i]
+      end
+      reaper.ImGui_DrawList_AddPolyline(draw, arr, col, false, 2.0)
+    else
+      for i = 1, (#pts - 2), 2 do
+        reaper.ImGui_DrawList_AddLine(draw, pts[i], pts[i + 1], pts[i + 2], pts[i + 3], col, 2.0)
+      end
+    end
   end
 
   -- points
