@@ -363,8 +363,33 @@ do
   package.path = base .. '/?.lua;' .. base .. '/?/init.lua;' .. package.path
 end
 
-local ui = require('fxpanels.ui')
-local theme = require('fxpanels.theme')
+local ui = nil
+do
+  local ok, mod = pcall(require, 'fxpanels.ui')
+  if ok then ui = mod end
+end
+local theme = nil
+do
+  local ok, mod = pcall(require, 'fxpanels.theme')
+  if ok then theme = mod end
+end
+if not ui then
+  ui = {
+    section_title = function(_, text) reaper.ImGui_Text(ctx, text) end,
+    caption_muted = function(_, text) reaper.ImGui_TextDisabled(ctx, text) end,
+    button_primary = function(_, label) return reaper.ImGui_Button(ctx, label) end,
+    button_secondary = function(_, label) return reaper.ImGui_Button(ctx, label) end,
+    button_ghost = function(_, label) return reaper.ImGui_Button(ctx, label) end,
+    toolbar_begin = function() return { sv = 0, sc = 0 } end,
+    toolbar_end = function() end,
+    input_text_web = function(_, label, value) return reaper.ImGui_InputText(ctx, label, value or '') end,
+    card_begin = function(_, id, _, w, h) return reaper.ImGui_BeginChild(ctx, id, w or 0, h or 0, false), true, { sv = 0, sc = 0 } end,
+    card_end = function() if reaper.ImGui_EndChild then reaper.ImGui_EndChild(ctx) end end,
+  }
+end
+if not theme then
+  theme = { push = function() return 0, 0 end, pop = function() end }
+end
 
 local function get_script_path(name)
   return join_path(SCRIPT_DIR, name)

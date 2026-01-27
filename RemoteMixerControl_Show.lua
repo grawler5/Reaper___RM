@@ -36,8 +36,10 @@ reaper.SetExtState(SCRIPT_NS, "ControlUIFocus", "1", false)
 if not is_alive then
   local dir = get_script_dir()
   local main_path = join_path(dir, "RemoteMixerControl.lua")
-  local ok, err = pcall(dofile, main_path)
-  if not ok then
-    reaper.ShowMessageBox("Failed to start RemoteMixerControl.lua:\n" .. tostring(err), "ReaperRM", 0)
+  local cmd = reaper.AddRemoveReaScript(true, 0, main_path, true)
+  if cmd and cmd > 0 then
+    reaper.Main_OnCommand(cmd, 0)
+  else
+    reaper.ShowMessageBox("Failed to start RemoteMixerControl.lua:\n" .. tostring(main_path), "ReaperRM", 0)
   end
 end
