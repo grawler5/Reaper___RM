@@ -244,8 +244,8 @@ function ui.knob_norm(ctx, id, value, scale, size, label, value_text)
     reaper.ImGui_DrawList_AddCircle(draw, cx, cy, r, bd)
 
     -- Knob sweep should start around 7 o'clock and end around 5 o'clock.
-    local ang_min = math.rad(210)
-    local ang_max = math.rad(330)
+    local ang_min = math.rad(225)
+    local ang_max = math.rad(315)
     local ang = ang_min + (ang_max - ang_min) * v
     local px = cx + math.cos(ang) * (r * 0.85)
     local py = cy + math.sin(ang) * (r * 0.85)

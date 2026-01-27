@@ -46,8 +46,8 @@ local function color_u32(r, g, b, a)
   return reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
 end
 
-local KNOB_ANG_MIN = math.rad(210)
-local KNOB_ANG_MAX = math.rad(330)
+local KNOB_ANG_MIN = math.rad(225)
+local KNOB_ANG_MAX = math.rad(315)
 
 local function draw_label(ctx, dl, text, x, y, col)
   if reaper.ImGui_DrawList_AddText then

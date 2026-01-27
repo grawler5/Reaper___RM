@@ -286,8 +286,8 @@ local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
 
   -- Needle (7 o'clock .. 5 o'clock)
   if reaper.ImGui_DrawList_AddLine then
-    local ang_min = math.rad(210)
-    local ang_max = math.rad(330)
+    local ang_min = math.rad(225)
+    local ang_max = math.rad(315)
     local ang = ang_min + (ang_max - ang_min) * v
     local nx = cx + math.cos(ang) * (r_outer * 0.72)
     local ny = cy + math.sin(ang) * (r_outer * 0.72)

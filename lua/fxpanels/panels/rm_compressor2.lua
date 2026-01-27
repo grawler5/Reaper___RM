@@ -81,7 +81,8 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_Separator(ctx)
     local th = params.get_norm(track, fx, P.threshold)
     local th_fmt = params.get_formatted(track, fx, P.threshold)
-    local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, 220, th_fmt)
+    local def = params.get_default_norm(track, fx, P.threshold)
+    local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, 220, th_fmt, def)
     if ch then params.set_norm(track, fx, P.threshold, nv) end
     draw_param_knob(ctx, track, fx, ui, scale, 'ATT', P.attack, 54)
     reaper.ImGui_SameLine(ctx)
@@ -106,11 +107,11 @@ function panel.render(ctx, track, fx, ui, state)
     avail_w, avail_h = reaper.ImGui_GetContentRegionAvail(ctx)
   end
   local gap = 14 * scale
-  local left_w = 210 * scale
-  local right_w = 150 * scale
+  local left_w = 195 * scale
+  local right_w = 110 * scale
   local min_mid = 320 * scale
   local mid_w = math.max(min_mid, (avail_w or 0) - left_w - right_w - gap * 2)
-  local card_h = math.min(320 * scale, (avail_h or 0) - 80 * scale)
+  local card_h = math.max(320 * scale, (avail_h or 0) - 16 * scale)
 
   local dl = reaper.ImGui_GetWindowDrawList(ctx)
   local function draw_readout(text, x, y, w, h)
@@ -140,22 +141,32 @@ function panel.render(ctx, track, fx, ui, state)
       reaper.ImGui_DrawList_AddText(dl, x0 + 10 * scale, y0 + 8 * scale, title_col, title)
     end
     compat.set_cursor_screen_pos(ctx, x0 + 12 * scale, y0 + 30 * scale)
-    if fn then fn(w - 24 * scale, h - 42 * scale) end
+    if fn then fn(w - 24 * scale, h - 42 * scale, x0, y0) end
     compat.set_cursor_screen_pos(ctx, x0, y0)
     reaper.ImGui_Dummy(ctx, w, h)
   end
 
   -- Left column: Threshold card
   reaper.ImGui_BeginGroup(ctx)
-  draw_card('THRESHOLD', left_w, card_h, function(inner_w, inner_h)
+  draw_card('THRESHOLD', left_w, card_h, function(inner_w, inner_h, card_x, card_y)
     local th = params.get_norm(track, fx, P.threshold)
     local th_fmt = params.get_formatted(track, fx, P.threshold)
     local gr_db = params.get_raw(track, fx, P.gr_db)
     local gr_norm = compat.clamp((gr_db or 0) / 24.0, 0, 1)
-    local slider_h = inner_h - 60 * scale
+    local slider_h = math.max(160 * scale, inner_h - 120 * scale)
+
+    local readout_w = 72 * scale
+    local readout_h = 26 * scale
+    local readout_x = card_x + (left_w - readout_w) * 0.5
+    local readout_y = card_y + 36 * scale
+    draw_readout(th_fmt or '—', readout_x, readout_y, readout_w, readout_h)
+
+    local inner_x, inner_y = compat.get_cursor_screen_pos(ctx)
+    compat.set_cursor_screen_pos(ctx, inner_x, inner_y + 40 * scale)
 
     reaper.ImGui_BeginGroup(ctx)
-    local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, slider_h, th_fmt)
+    local def = params.get_default_norm(track, fx, P.threshold)
+    local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, slider_h, nil, def)
     if ch then params.set_norm(track, fx, P.threshold, nv) end
     reaper.ImGui_EndGroup(ctx)
 
@@ -164,21 +175,48 @@ function panel.render(ctx, track, fx, ui, state)
 
     local x0, y0 = compat.get_cursor_screen_pos(ctx)
     local label_col = reaper.ImGui_ColorConvertDouble4ToU32(0.85, 0.86, 0.88, 0.8)
-    local readout_w = (inner_w - 16 * scale) / 3
-    local readout_h = 26 * scale
+    local meter_readout_w = (inner_w - 8 * scale) / 2
+    local meter_readout_h = 26 * scale
     local row_y = y0 + slider_h + 10 * scale
     reaper.ImGui_DrawList_AddText(dl, x0, row_y - 16 * scale, label_col, 'IN')
-    reaper.ImGui_DrawList_AddText(dl, x0 + readout_w + 8 * scale, row_y - 16 * scale, label_col, 'THR')
-    reaper.ImGui_DrawList_AddText(dl, x0 + (readout_w + 8 * scale) * 2, row_y - 16 * scale, label_col, 'GR')
-    draw_readout(format_meter_value(P.in_peak), x0, row_y, readout_w, readout_h)
-    draw_readout(th_fmt or '—', x0 + readout_w + 8 * scale, row_y, readout_w, readout_h)
+    reaper.ImGui_DrawList_AddText(dl, x0 + meter_readout_w + 8 * scale, row_y - 16 * scale, label_col, 'GR')
+    draw_readout(format_meter_value(P.in_peak), x0, row_y, meter_readout_w, meter_readout_h)
     local gr_text = string.format('%.1f dB', gr_db or 0)
-    draw_readout(gr_text, x0 + (readout_w + 8 * scale) * 2, row_y, readout_w, readout_h)
+    draw_readout(gr_text, x0 + meter_readout_w + 8 * scale, row_y, meter_readout_w, meter_readout_h)
 
-    local sc = params.get_norm(track, fx, P.sidechain)
-    reaper.ImGui_Dummy(ctx, 1, 6 * scale)
-    local changed, on = ui.toggle(ctx, sc > 0.5 and 'Detector: SC' or 'Detector: Main', sc > 0.5, scale)
-    if changed then params.set_norm(track, fx, P.sidechain, on and 1 or 0) end
+    local sc = params.get_norm(track, fx, P.sidechain) > 0.5
+    reaper.ImGui_Dummy(ctx, 1, 12 * scale)
+    local btn_w = (inner_w - 8 * scale) / 2
+    local btn_h = 28 * scale
+    reaper.ImGui_PushStyleVar(ctx, compat.resolve_enum(reaper.ImGui_StyleVar_FrameRounding) or reaper.ImGui_StyleVar_FrameRounding, 10 * scale)
+    if sc then
+      ui.push_color(ctx, reaper.ImGui_Col_Button, 0.18, 0.19, 0.22, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.22, 0.23, 0.26, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.16, 0.17, 0.20, 1.0)
+    else
+      ui.push_color(ctx, reaper.ImGui_Col_Button, 0.22, 0.22, 0.24, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.26, 0.26, 0.28, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.18, 0.18, 0.20, 1.0)
+    end
+    if reaper.ImGui_Button(ctx, 'Main', btn_w, btn_h) then
+      params.set_norm(track, fx, P.sidechain, 0)
+    end
+    pcall(reaper.ImGui_PopStyleColor, ctx, 3)
+    reaper.ImGui_SameLine(ctx, 0, 8 * scale)
+    if sc then
+      ui.push_color(ctx, reaper.ImGui_Col_Button, 0.22, 0.22, 0.24, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.26, 0.26, 0.28, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.18, 0.18, 0.20, 1.0)
+    else
+      ui.push_color(ctx, reaper.ImGui_Col_Button, 0.18, 0.19, 0.22, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.22, 0.23, 0.26, 1.0)
+      ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.16, 0.17, 0.20, 1.0)
+    end
+    if reaper.ImGui_Button(ctx, 'Returns', btn_w, btn_h) then
+      params.set_norm(track, fx, P.sidechain, 1)
+    end
+    pcall(reaper.ImGui_PopStyleColor, ctx, 3)
+    reaper.ImGui_PopStyleVar(ctx, 1)
   end)
   reaper.ImGui_EndGroup(ctx)
 
@@ -210,13 +248,11 @@ function panel.render(ctx, track, fx, ui, state)
   reaper.ImGui_BeginGroup(ctx)
   draw_card('OUTPUT', right_w, card_h, function(inner_w, inner_h)
     local out = params.get_norm(track, fx, P.output)
-    local out_fmt = params.get_formatted(track, fx, P.output)
-    local slider_h = inner_h - 60 * scale
-    local ch_out, nv_out = ui.vslider(ctx, '##rm_comp2_out', out, scale, slider_h, out_fmt)
+    local slider_h = math.max(160 * scale, inner_h - 120 * scale)
+    local def = params.get_default_norm(track, fx, P.output)
+    local ch_out, nv_out = ui.vslider(ctx, '##rm_comp2_out', out, scale, slider_h, nil, def)
     if ch_out then params.set_norm(track, fx, P.output, nv_out) end
     reaper.ImGui_Text(ctx, 'OUT')
-    reaper.ImGui_SameLine(ctx, 0, 8 * scale)
-    reaper.ImGui_Text(ctx, format_meter_value(P.out_peak))
   end)
   reaper.ImGui_EndGroup(ctx)
 
