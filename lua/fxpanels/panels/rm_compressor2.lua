@@ -76,6 +76,13 @@ end
 function panel.render(ctx, track, fx, ui, state)
   local scale = (state.ui_scale or state.scale or 1.0)
 
+  local function default_norm(param)
+    if params.get_default_norm then
+      return params.get_default_norm(track, fx, param)
+    end
+    return 0.5
+  end
+
   local function with_group(fn)
     if reaper.ImGui_BeginGroup then
       reaper.ImGui_BeginGroup(ctx)
@@ -94,7 +101,7 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_Separator(ctx)
     local th = params.get_norm(track, fx, P.threshold)
     local th_fmt = params.get_formatted(track, fx, P.threshold)
-    local def = params.get_default_norm(track, fx, P.threshold)
+    local def = default_norm(P.threshold)
     local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, 220, th_fmt, def)
     if ch then params.set_norm(track, fx, P.threshold, nv) end
     draw_param_knob(ctx, track, fx, ui, scale, 'ATT', P.attack, 54)
@@ -178,7 +185,7 @@ function panel.render(ctx, track, fx, ui, state)
     compat.set_cursor_screen_pos(ctx, inner_x, inner_y + 40 * scale)
 
       with_group(function()
-        local def = params.get_default_norm(track, fx, P.threshold)
+        local def = default_norm(P.threshold)
         local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, slider_h, nil, def)
         if ch then params.set_norm(track, fx, P.threshold, nv) end
       end)
@@ -262,7 +269,7 @@ function panel.render(ctx, track, fx, ui, state)
     draw_card('OUTPUT', right_w, card_h, function(inner_w, inner_h)
       local out = params.get_norm(track, fx, P.output)
       local slider_h = math.max(160 * scale, inner_h - 120 * scale)
-      local def = params.get_default_norm(track, fx, P.output)
+      local def = default_norm(P.output)
       local ch_out, nv_out = ui.vslider(ctx, '##rm_comp2_out', out, scale, slider_h, nil, def)
       if ch_out then params.set_norm(track, fx, P.output, nv_out) end
       reaper.ImGui_Text(ctx, 'OUT')
