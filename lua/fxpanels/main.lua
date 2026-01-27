@@ -264,7 +264,7 @@ local function header_row(ctx, ws, scale)
     local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
     local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
     local h = 32 * scale
-    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.12, 1.0) or nil
+    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.09, 0.10, 0.12, 1.0) or nil
     if dl and col and avail_w > 1 then
       pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + avail_w, y + h, col, 10 * scale)
     end

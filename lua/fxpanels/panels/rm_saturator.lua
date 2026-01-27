@@ -5,7 +5,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 980, win_h = 660, scale_mult = 1.0 }
+panel.meta = { win_w = 900, win_h = 640, scale_mult = 1.0 }
 
 -- Parameter indices (match JSFX in RM_jsfx.zip)
 local P = {
@@ -284,10 +284,10 @@ local function dial(ctx, track, fx, id, label, pidx, scale, value_formatter)
     end
   end
 
-  -- Needle (-135..135 deg)
+  -- Needle (7 o'clock .. 5 o'clock)
   if reaper.ImGui_DrawList_AddLine then
-    local ang_min = -2.35619449
-    local ang_max = 2.35619449
+    local ang_min = math.rad(225)
+    local ang_max = math.rad(315)
     local ang = ang_min + (ang_max - ang_min) * v
     local nx = cx + math.cos(ang) * (r_outer * 0.72)
     local ny = cy + math.sin(ang) * (r_outer * 0.72)
@@ -423,7 +423,7 @@ local function slope_combo(ctx, label, track, fx, pidx, scale)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * 0.75
+  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * (panel.meta.scale_mult or 1.0) * 0.75
 
   -- If we can't draw, fall back to the inspector-like UI.
   if not (

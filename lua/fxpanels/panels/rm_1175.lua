@@ -3,7 +3,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 940, win_h = 300 }
+panel.meta = { win_w = 520, win_h = 560, scale_mult = 1.0 }
 
 local BASE_W = 906
 local BASE_H = 213
@@ -20,6 +20,7 @@ end
 
 local function panel_scale(ctx, state)
   local scale = (state and (state.ui_scale or state.scale)) or 1.0
+  scale = scale * (panel.meta.scale_mult or 1.0)
   local base_w = BASE_W * scale
   local base_h = BASE_H * scale
   local avail_w, avail_h = 0, 0
@@ -51,12 +52,39 @@ local function color_u32(r, g, b, a)
   return reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
 end
 
+local KNOB_ANG_MIN = math.rad(225)
+local KNOB_ANG_MAX = math.rad(315)
+
 local function draw_label(ctx, dl, text, x, y, col)
   if reaper.ImGui_DrawList_AddText then
     reaper.ImGui_DrawList_AddText(dl, x, y, col, text)
   else
     compat.set_cursor_screen_pos(ctx, x, y)
     reaper.ImGui_Text(ctx, text)
+  end
+end
+
+local function draw_dial_face(dl, cx, cy, r, scale)
+  local base = color_u32(0.18, 0.19, 0.22, 1.0)
+  local inner = color_u32(0.10, 0.10, 0.12, 1.0)
+  local rim = color_u32(0, 0, 0, 0.6)
+  local tick = color_u32(0.88, 0.88, 0.92, 0.42)
+
+  reaper.ImGui_DrawList_AddCircleFilled(dl, cx, cy, r, base)
+  reaper.ImGui_DrawList_AddCircleFilled(dl, cx, cy, r * 0.82, inner)
+  reaper.ImGui_DrawList_AddCircle(dl, cx, cy, r, rim, 0, 1.6 * scale)
+  reaper.ImGui_DrawList_AddCircle(dl, cx, cy, r * 0.82, rim, 0, 1.0 * scale)
+
+  local steps = 11
+  for i = 0, steps - 1 do
+    local t = i / (steps - 1)
+    local ang = KNOB_ANG_MIN + (KNOB_ANG_MAX - KNOB_ANG_MIN) * t
+    local len = (i == 0 or i == steps - 1) and 0.18 or 0.12
+    local x1 = cx + math.cos(ang) * (r * 0.78)
+    local y1 = cy + math.sin(ang) * (r * 0.78)
+    local x2 = cx + math.cos(ang) * (r * (0.78 + len))
+    local y2 = cy + math.sin(ang) * (r * (0.78 + len))
+    reaper.ImGui_DrawList_AddLine(dl, x1, y1, x2, y2, tick, 1.2 * scale)
   end
 end
 
@@ -71,6 +99,14 @@ local function knob_at(ctx, track, fx, ui, x, y, size, param, scale, id, invert)
     v = out
   end
   return v
+end
+
+local function knob_with_dial(ctx, dl, track, fx, ui, x, y, size, param, scale, id, invert)
+  local s = size * scale
+  local cx = x + s * 0.5
+  local cy = y + s * 0.5
+  draw_dial_face(dl, cx, cy, s * 0.56, scale)
+  return knob_at(ctx, track, fx, ui, x, y, size, param, scale, id, invert)
 end
 
 local function draw_rect_button(ctx, dl, id, x, y, w, h, active, scale)
@@ -139,10 +175,10 @@ function panel.render(ctx, track, fx, ui, state)
 
   local map = map_params(track, fx)
 
-  knob_at(ctx, track, fx, ui, x0 + 80 * draw_scale, y0 + 60 * draw_scale, 100, map.input, draw_scale, '##1175_in', false)
-  knob_at(ctx, track, fx, ui, x0 + 270 * draw_scale, y0 + 60 * draw_scale, 100, map.output, draw_scale, '##1175_out', false)
-  knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 53 * draw_scale, 40, map.attack, draw_scale, '##1175_att', true)
-  knob_at(ctx, track, fx, ui, x0 + 460 * draw_scale, y0 + 133 * draw_scale, 40, map.release, draw_scale, '##1175_rel', true)
+  knob_with_dial(ctx, dl, track, fx, ui, x0 + 80 * draw_scale, y0 + 60 * draw_scale, 100, map.input, draw_scale, '##1175_in', false)
+  knob_with_dial(ctx, dl, track, fx, ui, x0 + 270 * draw_scale, y0 + 60 * draw_scale, 100, map.output, draw_scale, '##1175_out', false)
+  knob_with_dial(ctx, dl, track, fx, ui, x0 + 460 * draw_scale, y0 + 53 * draw_scale, 40, map.attack, draw_scale, '##1175_att', true)
+  knob_with_dial(ctx, dl, track, fx, ui, x0 + 460 * draw_scale, y0 + 133 * draw_scale, 40, map.release, draw_scale, '##1175_rel', true)
 
   local ratio_raw = select(1, params.get_raw(track, fx, map.ratio))
   local ratio_is_all = ratio_raw >= 3.5

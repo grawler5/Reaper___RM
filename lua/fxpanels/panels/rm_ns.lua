@@ -6,7 +6,7 @@ local compat = require('fxpanels.compat')
 local panel = {}
 
 -- Default window size tuned to match the Web UI proportions.
-panel.meta = { win_w = 360, win_h = 560 }
+panel.meta = { win_w = 400, win_h = 520, scale_mult = 0.98 }
 
 -- Main control (0..1).
 local IDX_AMOUNT = 0
@@ -192,7 +192,7 @@ function panel.render_presets_row(ctx, ws, scale, ui)
 end
 
 function panel.render(ctx, track, fx, ui, state)
-  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * 0.75
+  local scale = ((state and (state.scale or state.ui_scale)) or 1.0) * (panel.meta.scale_mult or 1.0) * 0.75
 
   local v = clamp01(params.get_norm(track, fx, IDX_AMOUNT))
   local dl_ok = (reaper.ImGui_GetWindowDrawList ~= nil) and (reaper.ImGui_DrawList_AddRectFilled ~= nil) and (reaper.ImGui_ColorConvertDouble4ToU32 ~= nil)
