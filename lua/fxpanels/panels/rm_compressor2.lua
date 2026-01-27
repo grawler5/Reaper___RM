@@ -76,6 +76,19 @@ end
 function panel.render(ctx, track, fx, ui, state)
   local scale = (state.ui_scale or state.scale or 1.0)
 
+  local function with_group(fn)
+    if reaper.ImGui_BeginGroup then
+      reaper.ImGui_BeginGroup(ctx)
+      local ok, err = xpcall(function()
+        if fn then fn() end
+      end, debug.traceback)
+      reaper.ImGui_EndGroup(ctx)
+      if not ok then error(err) end
+    elseif fn then
+      fn()
+    end
+  end
+
   if not compat.has_drawlist() then
     reaper.ImGui_Text(ctx, 'RM Compressor2')
     reaper.ImGui_Separator(ctx)
@@ -147,13 +160,13 @@ function panel.render(ctx, track, fx, ui, state)
   end
 
   -- Left column: Threshold card
-  reaper.ImGui_BeginGroup(ctx)
-  draw_card('THRESHOLD', left_w, card_h, function(inner_w, inner_h, card_x, card_y)
-    local th = params.get_norm(track, fx, P.threshold)
-    local th_fmt = params.get_formatted(track, fx, P.threshold)
-    local gr_db = params.get_raw(track, fx, P.gr_db)
-    local gr_norm = compat.clamp((gr_db or 0) / 24.0, 0, 1)
-    local slider_h = math.max(160 * scale, inner_h - 120 * scale)
+  with_group(function()
+    draw_card('THRESHOLD', left_w, card_h, function(inner_w, inner_h, card_x, card_y)
+      local th = params.get_norm(track, fx, P.threshold)
+      local th_fmt = params.get_formatted(track, fx, P.threshold)
+      local gr_db = params.get_raw(track, fx, P.gr_db)
+      local gr_norm = compat.clamp((gr_db or 0) / 24.0, 0, 1)
+      local slider_h = math.max(160 * scale, inner_h - 120 * scale)
 
     local readout_w = 72 * scale
     local readout_h = 26 * scale
@@ -164,11 +177,11 @@ function panel.render(ctx, track, fx, ui, state)
     local inner_x, inner_y = compat.get_cursor_screen_pos(ctx)
     compat.set_cursor_screen_pos(ctx, inner_x, inner_y + 40 * scale)
 
-    reaper.ImGui_BeginGroup(ctx)
-    local def = params.get_default_norm(track, fx, P.threshold)
-    local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, slider_h, nil, def)
-    if ch then params.set_norm(track, fx, P.threshold, nv) end
-    reaper.ImGui_EndGroup(ctx)
+      with_group(function()
+        local def = params.get_default_norm(track, fx, P.threshold)
+        local ch, nv = ui.vslider(ctx, '##rm_comp2_thresh', th, scale, slider_h, nil, def)
+        if ch then params.set_norm(track, fx, P.threshold, nv) end
+      end)
 
     reaper.ImGui_SameLine(ctx, 0, 16 * scale)
     ui.meter_v(ctx, gr_norm, scale, slider_h)
@@ -216,45 +229,45 @@ function panel.render(ctx, track, fx, ui, state)
       params.set_norm(track, fx, P.sidechain, 1)
     end
     pcall(reaper.ImGui_PopStyleColor, ctx, 3)
-    reaper.ImGui_PopStyleVar(ctx, 1)
+    pcall(reaper.ImGui_PopStyleVar, ctx, 1)
   end)
-  reaper.ImGui_EndGroup(ctx)
+  end)
 
   reaper.ImGui_SameLine(ctx, 0, gap)
 
   -- Middle column: Envelope + Filter + Options
-  reaper.ImGui_BeginGroup(ctx)
-  draw_card('ENVELOPE', mid_w, card_h * 0.52, function(inner_w)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'Attack', P.attack, inner_w - 30 * scale)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'Release', P.release, inner_w - 30 * scale)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'Ratio', P.ratio, inner_w - 30 * scale)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'Knee', P.knee, inner_w - 30 * scale)
-  end)
+  with_group(function()
+    draw_card('ENVELOPE', mid_w, card_h * 0.52, function(inner_w)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'Attack', P.attack, inner_w - 30 * scale)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'Release', P.release, inner_w - 30 * scale)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'Ratio', P.ratio, inner_w - 30 * scale)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'Knee', P.knee, inner_w - 30 * scale)
+    end)
 
-  reaper.ImGui_Dummy(ctx, 1, 10 * scale)
-  draw_card('FILTER', mid_w, card_h * 0.30, function(inner_w)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'LP', P.det_lp, inner_w - 30 * scale)
-    draw_param_hslider(ctx, track, fx, ui, scale, 'HP', P.det_hp, inner_w - 30 * scale)
-  end)
+    reaper.ImGui_Dummy(ctx, 1, 10 * scale)
+    draw_card('FILTER', mid_w, card_h * 0.30, function(inner_w)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'LP', P.det_lp, inner_w - 30 * scale)
+      draw_param_hslider(ctx, track, fx, ui, scale, 'HP', P.det_hp, inner_w - 30 * scale)
+    end)
 
-  reaper.ImGui_Dummy(ctx, 1, 10 * scale)
-  reaper.ImGui_Text(ctx, 'OPTIONS')
-  draw_toggle_row(ctx, track, fx, ui, scale)
-  reaper.ImGui_EndGroup(ctx)
+    reaper.ImGui_Dummy(ctx, 1, 10 * scale)
+    reaper.ImGui_Text(ctx, 'OPTIONS')
+    draw_toggle_row(ctx, track, fx, ui, scale)
+  end)
 
   reaper.ImGui_SameLine(ctx, 0, gap)
 
   -- Right column: Output card
-  reaper.ImGui_BeginGroup(ctx)
-  draw_card('OUTPUT', right_w, card_h, function(inner_w, inner_h)
-    local out = params.get_norm(track, fx, P.output)
-    local slider_h = math.max(160 * scale, inner_h - 120 * scale)
-    local def = params.get_default_norm(track, fx, P.output)
-    local ch_out, nv_out = ui.vslider(ctx, '##rm_comp2_out', out, scale, slider_h, nil, def)
-    if ch_out then params.set_norm(track, fx, P.output, nv_out) end
-    reaper.ImGui_Text(ctx, 'OUT')
+  with_group(function()
+    draw_card('OUTPUT', right_w, card_h, function(inner_w, inner_h)
+      local out = params.get_norm(track, fx, P.output)
+      local slider_h = math.max(160 * scale, inner_h - 120 * scale)
+      local def = params.get_default_norm(track, fx, P.output)
+      local ch_out, nv_out = ui.vslider(ctx, '##rm_comp2_out', out, scale, slider_h, nil, def)
+      if ch_out then params.set_norm(track, fx, P.output, nv_out) end
+      reaper.ImGui_Text(ctx, 'OUT')
+    end)
   end)
-  reaper.ImGui_EndGroup(ctx)
 
 end
 
