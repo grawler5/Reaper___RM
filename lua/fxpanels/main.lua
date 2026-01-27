@@ -3,6 +3,7 @@ local compat = require('fxpanels.compat')
 local ui = require('fxpanels.ui')
 local params = require('fxpanels.params')
 local presets_store = require('fxpanels.presets')
+local theme = require('fxpanels.theme')
 
 local main = {}
 
@@ -48,42 +49,12 @@ local function E(v)
   return compat.resolve_enum(v) or v
 end
 
-local function push_theme(ctx)
-  -- IMPORTANT: Never assume style pushes succeeded. On macOS + ReaImGui 0.10.x
-  -- the context may be invalid for a frame; pushing then popping fixed counts
-  -- can crash with "PopStyle* too many times".
-  local sv, sc = 0, 0
-  local function PSV(var, ...)
-    local ok = pcall(reaper.ImGui_PushStyleVar, ctx, E(var), ...)
-    if ok then sv = sv + 1 end
-  end
-  local function PSC(col, r, g, b, a)
-    local ok = pcall(ui.push_color, ctx, col, r, g, b, a)
-    if ok then sc = sc + 1 end
-  end
-
-  PSV(reaper.ImGui_StyleVar_WindowRounding, 14)
-  PSV(reaper.ImGui_StyleVar_FrameRounding, 10)
-  PSV(reaper.ImGui_StyleVar_ChildRounding, 10)
-  PSV(reaper.ImGui_StyleVar_PopupRounding, 10)
-  PSV(reaper.ImGui_StyleVar_WindowPadding, 14, 12)
-  PSV(reaper.ImGui_StyleVar_ItemSpacing, 10, 8)
-
-  PSC(reaper.ImGui_Col_WindowBg, 0.09, 0.10, 0.12, 1.0)
-  PSC(reaper.ImGui_Col_FrameBg, 0.15, 0.16, 0.20, 1.0)
-  PSC(reaper.ImGui_Col_Button, 0.18, 0.20, 0.25, 1.0)
-  PSC(reaper.ImGui_Col_ButtonHovered, 0.23, 0.25, 0.31, 1.0)
-  PSC(reaper.ImGui_Col_ButtonActive, 0.27, 0.30, 0.38, 1.0)
-  PSC(reaper.ImGui_Col_Header, 0.18, 0.20, 0.25, 1.0)
-  PSC(reaper.ImGui_Col_HeaderHovered, 0.23, 0.25, 0.31, 1.0)
-  PSC(reaper.ImGui_Col_HeaderActive, 0.27, 0.30, 0.38, 1.0)
-
-  return sv, sc
+local function push_theme(ctx, scale)
+  return theme.push(ctx, scale)
 end
 
 local function pop_theme(ctx, sv, sc)
-  if sc and sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, sc) end
-  if sv and sv > 0 then pcall(reaper.ImGui_PopStyleVar, ctx, sv) end
+  return theme.pop(ctx, sv, sc)
 end
 
 -- Context guard (macOS + ReaImGui 0.10.x)
@@ -242,6 +213,8 @@ local function _right_align_from_window(ctx, right_w)
 end
 
 local function header_row(ctx, ws, scale)
+  local c = theme.colors()
+  local m = theme.metrics(scale)
   local track = ws.track
   local fx = ws.fx
   local track_name = ws.track_name or 'Track'
@@ -252,19 +225,19 @@ local function header_row(ctx, ws, scale)
     enabled = reaper.TrackFX_GetEnabled(track, fx)
   end
 
-  local btn_h = 24 * scale
-  local gap = 6 * scale
+  local btn_h = m.control_h
+  local gap = m.toolbar_gap
   local w_insp = 92 * scale
-  local w_on = 48 * scale
-  local w_x = 28 * scale
+  local w_on = 52 * scale
+  local w_x = 32 * scale
 
   -- Header background
   if reaper.ImGui_GetWindowDrawList and reaper.ImGui_DrawList_AddRectFilled then
     local dl = reaper.ImGui_GetWindowDrawList(ctx)
     local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
     local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
-    local h = 32 * scale
-    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(0.09, 0.10, 0.12, 1.0) or nil
+    local h = m.topbar_h * 0.75
+    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.panel_alt)) or nil
     if dl and col and avail_w > 1 then
       pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + avail_w, y + h, col, 10 * scale)
     end
@@ -272,10 +245,10 @@ local function header_row(ctx, ws, scale)
 
   -- Header content (single line): title on the left, buttons pinned to the right.
   local right_w = w_insp + gap + w_on + gap + w_x
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 6 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), m.control_pad_x, (btn_h - m.control_font) * 0.5)
 
   reaper.ImGui_AlignTextToFramePadding(ctx)
-  ui.push_color(ctx, reaper.ImGui_Col_Text, 0.90, 0.90, 0.90, 1.0)
+  ui.push_color(ctx, reaper.ImGui_Col_Text, theme.rgba(c.text))
   reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
   pcall(reaper.ImGui_PopStyleColor, ctx)
 
@@ -284,13 +257,13 @@ local function header_row(ctx, ws, scale)
   _right_align_from_window(ctx, right_w)
 
   if ws.show_inspector then
-    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.24, 0.26, 0.30, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.28, 0.30, 0.34, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.22, 0.24, 0.28, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.slot))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.panel))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
   else
-    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.18, 0.19, 0.22, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.22, 0.23, 0.26, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.16, 0.17, 0.20, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.panel))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
   end
   if reaper.ImGui_Button(ctx, 'Inspector##' .. ws.id, w_insp, btn_h) then
     ws.show_inspector = not ws.show_inspector
@@ -300,13 +273,13 @@ local function header_row(ctx, ws, scale)
 
   local on_label = enabled and 'ON' or 'OFF'
   if enabled then
-    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.16, 0.36, 0.70, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.18, 0.42, 0.80, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.14, 0.30, 0.58, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.accent))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.accent, 0.88))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.accent, 0.75))
   else
-    ui.push_color(ctx, reaper.ImGui_Col_Button, 0.20, 0.20, 0.20, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.24, 0.24, 0.24, 1.0)
-    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.18, 0.18, 0.18, 1.0)
+    ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.panel))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
+    ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
   end
   if reaper.ImGui_Button(ctx, on_label .. '##' .. ws.id, w_on, btn_h) then
     if reaper.TrackFX_SetEnabled then
@@ -318,10 +291,10 @@ local function header_row(ctx, ws, scale)
   reaper.ImGui_SameLine(ctx, 0, gap)
 
   -- Close button: neutral grey like Web UI (not red).
-  ui.push_color(ctx, reaper.ImGui_Col_Button, 0.20, 0.20, 0.22, 1.0)
-  ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, 0.26, 0.26, 0.28, 1.0)
-  ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, 0.18, 0.18, 0.20, 1.0)
-  ui.push_color(ctx, reaper.ImGui_Col_Text, 0.92, 0.92, 0.92, 1.0)
+  ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.panel))
+  ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
+  ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
+  ui.push_color(ctx, reaper.ImGui_Col_Text, theme.rgba(c.text))
   if reaper.ImGui_Button(ctx, 'X##' .. ws.id, w_x, btn_h) then
     ws.request_close = true
   end
@@ -464,7 +437,7 @@ local function render_window(ctx, ws)
     end
   end
 
-  local sv, sc = push_theme(ctx)
+  local sv, sc = push_theme(ctx, scale)
 
   -- IMPORTANT: Always guarantee End() even if panel code throws.
   -- If Begin() fails (can return nil on macOS for an invalid frame), do not call End().

@@ -1,4 +1,5 @@
 local compat = require('fxpanels.compat')
+local theme = require('fxpanels.theme')
 
 local ui = {}
 
@@ -271,6 +272,121 @@ function ui.knob_norm(ctx, id, value, scale, size, label, value_text)
   end
 
   return changed, new_v
+end
+
+local function scoped_style(ctx)
+  return { sv = 0, sc = 0 }
+end
+
+local function pop_scoped(ctx, scope)
+  if scope.sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, scope.sc) end
+  if scope.sv > 0 then pcall(reaper.ImGui_PopStyleVar, ctx, scope.sv) end
+end
+
+local function psv(ctx, scope, var, ...)
+  local ok = pcall(reaper.ImGui_PushStyleVar, ctx, E(var), ...)
+  if ok then scope.sv = scope.sv + 1 end
+end
+
+local function psc(ctx, scope, col, r, g, b, a)
+  local ok = pcall(ui.push_color, ctx, col, r, g, b, a)
+  if ok then scope.sc = scope.sc + 1 end
+end
+
+function ui.button_primary(ctx, label, scale, w, h)
+  local c = theme.colors()
+  local scope = scoped_style(ctx)
+  psc(ctx, scope, reaper.ImGui_Col_Button, theme.rgba(c.accent))
+  psc(ctx, scope, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.accent, 0.88))
+  psc(ctx, scope, reaper.ImGui_Col_ButtonActive, theme.rgba(c.accent, 0.75))
+  psc(ctx, scope, reaper.ImGui_Col_Text, theme.rgba(c.text))
+  local changed = reaper.ImGui_Button(ctx, label, (w or 0) * (scale or 1.0), (h or 0) * (scale or 1.0))
+  pop_scoped(ctx, scope)
+  return changed
+end
+
+function ui.button_secondary(ctx, label, scale, w, h)
+  local c = theme.colors()
+  local scope = scoped_style(ctx)
+  psc(ctx, scope, reaper.ImGui_Col_Button, theme.rgba(c.panel))
+  psc(ctx, scope, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
+  psc(ctx, scope, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
+  psc(ctx, scope, reaper.ImGui_Col_Text, theme.rgba(c.text))
+  local changed = reaper.ImGui_Button(ctx, label, (w or 0) * (scale or 1.0), (h or 0) * (scale or 1.0))
+  pop_scoped(ctx, scope)
+  return changed
+end
+
+function ui.button_ghost(ctx, label, scale, w, h)
+  local c = theme.colors()
+  local scope = scoped_style(ctx)
+  psc(ctx, scope, reaper.ImGui_Col_Button, 0, 0, 0, 0)
+  psc(ctx, scope, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.panel_alt, 0.65))
+  psc(ctx, scope, reaper.ImGui_Col_ButtonActive, theme.rgba(c.slot, 0.8))
+  psc(ctx, scope, reaper.ImGui_Col_Text, theme.rgba(c.text))
+  local changed = reaper.ImGui_Button(ctx, label, (w or 0) * (scale or 1.0), (h or 0) * (scale or 1.0))
+  pop_scoped(ctx, scope)
+  return changed
+end
+
+function ui.input_text_web(ctx, label, value, scale, width)
+  local c = theme.colors()
+  local m = theme.metrics(scale or 1.0)
+  local scope = scoped_style(ctx)
+  psv(ctx, scope, reaper.ImGui_StyleVar_FramePadding, m.control_pad_x, (m.control_h - m.control_font) * 0.5)
+  psv(ctx, scope, reaper.ImGui_StyleVar_FrameRounding, m.control_radius)
+  psv(ctx, scope, reaper.ImGui_StyleVar_FrameBorderSize, 1.0)
+  psc(ctx, scope, reaper.ImGui_Col_FrameBg, theme.rgba(c.panel_alt))
+  psc(ctx, scope, reaper.ImGui_Col_FrameBgHovered, theme.rgba(c.slot))
+  psc(ctx, scope, reaper.ImGui_Col_FrameBgActive, theme.rgba(c.panel))
+  psc(ctx, scope, reaper.ImGui_Col_Border, theme.rgba(c.border))
+  psc(ctx, scope, reaper.ImGui_Col_Text, theme.rgba(c.text))
+  if width then reaper.ImGui_PushItemWidth(ctx, width) end
+  local changed, out = reaper.ImGui_InputText(ctx, label, value or '')
+  if width then reaper.ImGui_PopItemWidth(ctx) end
+  pop_scoped(ctx, scope)
+  return changed, out
+end
+
+function ui.card_begin(ctx, id, scale, w, h)
+  local c = theme.colors()
+  local m = theme.metrics(scale or 1.0)
+  local scope = scoped_style(ctx)
+  psv(ctx, scope, reaper.ImGui_StyleVar_ChildRounding, m.child_round)
+  psv(ctx, scope, reaper.ImGui_StyleVar_WindowPadding, m.card_pad_x, m.card_pad_y)
+  psc(ctx, scope, reaper.ImGui_Col_ChildBg, theme.rgba(c.panel))
+  psc(ctx, scope, reaper.ImGui_Col_Border, theme.rgba(c.border))
+  local opened, is_child = ui._begin_child(ctx, id, w or 0, h or 0, true)
+  return opened, is_child, scope
+end
+
+function ui.card_end(ctx, is_child, scope)
+  if is_child then pcall(reaper.ImGui_EndChild, ctx) end
+  pop_scoped(ctx, scope or { sv = 0, sc = 0 })
+end
+
+function ui.toolbar_begin(ctx, scale)
+  local m = theme.metrics(scale or 1.0)
+  local scope = scoped_style(ctx)
+  psv(ctx, scope, reaper.ImGui_StyleVar_ItemSpacing, m.toolbar_gap, m.toolbar_gap)
+  psv(ctx, scope, reaper.ImGui_StyleVar_FramePadding, m.control_pad_x, (m.control_h - m.control_font) * 0.5)
+  return scope
+end
+
+function ui.toolbar_end(ctx, scope)
+  pop_scoped(ctx, scope or { sv = 0, sc = 0 })
+end
+
+function ui.section_title(ctx, text)
+  reaper.ImGui_Text(ctx, text)
+end
+
+function ui.caption_muted(ctx, text)
+  local c = theme.colors()
+  local scope = scoped_style(ctx)
+  psc(ctx, scope, reaper.ImGui_Col_Text, theme.rgba(c.muted))
+  reaper.ImGui_Text(ctx, text)
+  pop_scoped(ctx, scope)
 end
 
 return ui
