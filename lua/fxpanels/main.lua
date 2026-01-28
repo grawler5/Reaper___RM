@@ -280,10 +280,19 @@ local function header_row(ctx, ws, scale)
 
   local btn_h = m.control_h
   local gap = m.toolbar_gap
-  local w_refresh = 78 * scale
-  local w_insp = 96 * scale
-  local w_on = 52 * scale
-  local w_x = 32 * scale
+  local pad_x = m.control_pad_x
+  local function button_w(label, fallback)
+    if reaper.ImGui_CalcTextSize then
+      local tw = select(1, reaper.ImGui_CalcTextSize(ctx, label)) or 0
+      return tw + pad_x * 2
+    end
+    return (fallback or 60) * scale
+  end
+
+  local w_refresh = button_w('Refresh', 78)
+  local w_insp = button_w('Inspector', 96)
+  local w_on = math.max(button_w('ON', 52), button_w('OFF', 52))
+  local w_x = button_w('✕', 32)
 
   local header_pad = math.max(0, (m.topbar_h - btn_h) * 0.5)
   if header_pad > 0 then
@@ -292,7 +301,7 @@ local function header_row(ctx, ws, scale)
 
   -- Header content (single line): title on the left, buttons pinned to the right.
   local right_w = w_refresh + gap + w_insp + gap + w_on + gap + w_x
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), m.control_pad_x, (btn_h - m.control_font) * 0.5)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), pad_x, (btn_h - m.control_font) * 0.5)
 
   reaper.ImGui_AlignTextToFramePadding(ctx)
   ui.push_color(ctx, reaper.ImGui_Col_Text, theme.rgba(c.text))
@@ -369,10 +378,19 @@ end
 
 local function presets_row(ctx, ws, scale)
   local list = ws.presets or {}
-  local btn_h = 24 * scale
-  local gap = 6 * scale
-  local w_save = 64 * scale
-  local w_del = 74 * scale
+  local m = theme.metrics(scale)
+  local btn_h = m.control_h
+  local gap = m.toolbar_gap
+  local pad_x = m.control_pad_x
+  local function button_w(label, fallback)
+    if reaper.ImGui_CalcTextSize then
+      local tw = select(1, reaper.ImGui_CalcTextSize(ctx, label)) or 0
+      return tw + pad_x * 2
+    end
+    return (fallback or 60) * scale
+  end
+  local w_save = button_w('Save', 64)
+  local w_del = button_w('Delete', 74)
   local right_w = w_save + gap + w_del
 
   -- Compute dropdown width so Save/Delete stick to the right like in Web UI.
@@ -383,7 +401,7 @@ local function presets_row(ctx, ws, scale)
   local combo_w = math.max(160 * scale, avail_w - right_w - gap)
 
   -- Dropdown (left)
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 5 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), pad_x, (btn_h - m.control_font) * 0.5)
   if reaper.ImGui_PushItemWidth then reaper.ImGui_PushItemWidth(ctx, combo_w) end
 
   local preview = 'Default'
