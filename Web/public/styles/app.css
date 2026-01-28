@@ -3533,19 +3533,99 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
   transform-origin: 0 0;
   will-change: transform;
 }
-.tukanSkin.laSkin{ background-image: url("/tukan/la/LABack.png"); }
-.tukanSkin.nc76Skin{ background-image: url("/tukan/76/76BackB.png"); }
-.tukanSkin.preSkin{ background-image: url("/tukan/pre/PREBack.png"); }
+.tukanSkin.laSkin{
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.12)),
+    linear-gradient(90deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.18), transparent 55%),
+    linear-gradient(180deg, #d2bea2 0%, #c4ad8e 40%, #b79f80 100%);
+  background-size: 100% 100%, 28px 100%, 100% 100%, 100% 100%;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 0 16px rgba(0,0,0,0.25);
+}
+.tukanSkin.nc76Skin{
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.2)),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 80% 10%, rgba(255,255,255,0.18), transparent 55%),
+    linear-gradient(180deg, #2f3238 0%, #1f2329 45%, #171b21 100%);
+  background-size: 100% 100%, 26px 100%, 100% 100%, 100% 100%;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 18px rgba(0,0,0,0.35);
+}
+.tukanSkin.preSkin{
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.16)),
+    linear-gradient(90deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 16% 20%, rgba(255,255,255,0.22), transparent 60%),
+    linear-gradient(180deg, #6c5b46 0%, #5a4a37 45%, #4b3b2c 100%);
+  background-size: 100% 100%, 30px 100%, 100% 100%, 100% 100%;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35), inset 0 0 16px rgba(0,0,0,0.3);
+}
 
 .tukanSkin .tkSprite{
   position: absolute;
   background-repeat: no-repeat;
   user-select: none;
 }
-.tukanSkin .tkKnob{ filter: none; }
-.tukanSkin .tkSwitch{ filter: none; }
+.tukanSkin .tkKnob{
+  filter: none;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), rgba(255,255,255,0.05) 35%, transparent 45%),
+    radial-gradient(circle at 50% 60%, rgba(0,0,0,0.45), rgba(0,0,0,0.8));
+  border: 1px solid rgba(0,0,0,0.6);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), inset 0 -3px 6px rgba(0,0,0,0.4);
+  position: absolute;
+}
+.tukanSkin .tkKnob::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 10%;
+  width: 8%;
+  height: 38%;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.7);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  transform: translateX(-50%) rotate(var(--rot, -135deg));
+  transform-origin: 50% 88%;
+}
+.tukanSkin .tkSwitch{
+  filter: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.2), rgba(0,0,0,0.35));
+  border: 1px solid rgba(0,0,0,0.6);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), inset 0 -3px 6px rgba(0,0,0,0.35);
+}
+.tukanSkin .tkSwitch::after{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  width: 60%;
+  height: 28%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d0d0d0, #9c9c9c);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  transform: translateX(-50%);
+  transition: transform 0.08s linear, background 0.08s linear;
+}
+.tukanSkin .tkSwitch.on::after{
+  background: linear-gradient(180deg, #ffe6a8, #d5a85f);
+  transform: translate(-50%, 140%);
+}
 .tukanSkin .tkVuFace{
   background-size: 100% 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.35);
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.05)),
+    linear-gradient(90deg, rgba(255,255,255,0.15) 0 1px, transparent 1px 100%);
+}
+.laSkin .tkVuFace{
+  background-color: rgba(236,226,210,0.9);
+}
+.nc76Skin .tkVuFace{
+  background-color: rgba(220,220,220,0.85);
 }
 .tukanSkin .tkNeedle{
   position: absolute;
@@ -3558,12 +3638,19 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
 }
 
 .tukanSkin .tkBtn{
-  background-image: url("/tukan/76/1176buttonB.png");
-  background-repeat: no-repeat;
-  background-size: 100% 200%;
-  background-position: 0 0;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.2), rgba(0,0,0,0.25)),
+    linear-gradient(180deg, #c7b29a 0%, #a88f76 100%);
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.35);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.25);
 }
-.tukanSkin .tkBtn.on{ background-position: 0 100%; }
+.tukanSkin .tkBtn.on{
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.35)),
+    linear-gradient(180deg, #8e7763 0%, #6f5a49 100%);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.35);
+}
 /* ---- RM_Limiter2: Waves L2-style panel (web) ---- */
 
 .rmL2Stage{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
@@ -3878,10 +3965,12 @@ background: linear-gradient(180deg,
   width:760px; height:420px;
   position:relative;
     box-sizing:border-box;
-  background-image:url("tukan/lexi2/Lexi2.png");
-  background-repeat:no-repeat;
-  background-size:contain;
-  background-position:center;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.2)),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 100%),
+    radial-gradient(circle at 18% 22%, rgba(255,255,255,0.2), transparent 60%),
+    linear-gradient(180deg, #3b3f46 0%, #2a2f36 45%, #1f2329 100%);
+  background-size: 100% 100%, 32px 100%, 100% 100%, 100% 100%;
   border-radius:22px;
   box-shadow:0 14px 28px rgba(0,0,0,0.35);
 }
@@ -4022,7 +4111,7 @@ background: linear-gradient(180deg,
    ========================== */
 .preVuSlot{
   position:absolute;
-  /* Match PREBack.png bar apertures (350x410): x=28..321, y=167..185 and y=197..215 */
+/* Match legacy panel bar apertures (350x410): x=28..321, y=167..185 and y=197..215 */
   left:28px;
   width:294px;
   height:19px;
@@ -4069,15 +4158,21 @@ background: linear-gradient(180deg,
   top:267px;
   width:18px;
   height:18px;
-  background-image:url(tukan/pre/overLED.png);
-  background-repeat:no-repeat;
-  background-size:100% 200%;
-  background-position:0 100%;
+  border-radius:999px;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9), rgba(255,255,255,0.1) 45%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(120,30,30,0.25), rgba(60,10,10,0.65));
+  border:1px solid rgba(0,0,0,0.45);
   opacity:.95;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));
   cursor:pointer;
 }
-.preOverLed.on{ background-position:0 0%; }
+.preOverLed.on{
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95), rgba(255,255,255,0.2) 45%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(255,120,120,0.95), rgba(180,40,40,0.9));
+  box-shadow: 0 0 10px rgba(255,90,90,0.8);
+}
 
 /* ===== RM_EQ Pro-Q style point panel ===== */
 .rmEqCanvasWrap{ position:relative;

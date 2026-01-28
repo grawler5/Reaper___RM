@@ -1549,6 +1549,16 @@ function formatParam(p){
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const deg = -135 + pct * 270;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -1579,9 +1589,8 @@ function formatParam(p){
   // Under the hood this knob drives Threshold (dB), where *lower* values mean *more* reduction.
   kbPR.dataset.inv = "1";
 
-  // Meter face (CCVU2 is drawn inside the frame on LABack)
+  // Meter face (CCVU2 is drawn inside the legacy LA frame)
   const vuFace = mk("tkVuFace", 305, 85, 190, 92);
-  vuFace.style.backgroundImage = "url(tukan/la/CCVU2.png)";
 
   // Needle (pivot is slightly below the visible face, matching the JSFX line draw)
   // Shift pivot a bit left so the 0-mark lines up visually with GR=0.
@@ -1597,22 +1606,16 @@ function formatParam(p){
   skin.appendChild(needle);
 
   // Sprites
-  const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
+  const setKnobSprite = (el, _url, frames)=>{
     el.dataset.frames = String(frames);
   };
-  const setSwitchSprite = (el, url)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${2*100}%`;
+  const setSwitchSprite = (el, _url)=>{
     el.dataset.frames = "2";
   };
-  setKnobSprite(kbGain, "tukan/la/machick.png", 61);
-  setKnobSprite(kbPR,   "tukan/la/machick.png", 61);
-  setSwitchSprite(swLC, "tukan/la/switch.png");
-  setSwitchSprite(swSC, "tukan/la/switch.png");
+  setKnobSprite(kbGain, "", 61);
+  setKnobSprite(kbPR,   "", 61);
+  setSwitchSprite(swLC, "");
+  setSwitchSprite(swSC, "");
 
   // --- Dynamic param mapping (do NOT capture param objects, only indices) ---
   let idxGain = null, idxThr = null, idxPRLegacy = null, idxMode = null, idxSC = null, idxGR = null;
@@ -1895,6 +1898,16 @@ function buildNC76PanelControl(win, ctrl){
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const deg = -135 + pct * 270;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -1925,7 +1938,6 @@ function buildNC76PanelControl(win, ctrl){
   kbRel.dataset.inv = "1";
 
   const vuFace = mk("tkVuFace", 605, 55, 190, 92);
-  vuFace.style.backgroundImage = "url(tukan/76/CCVU2.png)";
 
   // VU meter window is 92px tall (y=55..147). Keep the pivot on the bottom edge.
   const needleLen = 78;
@@ -1940,15 +1952,12 @@ function buildNC76PanelControl(win, ctrl){
   skin.appendChild(needle);
 
   const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
     el.dataset.frames = String(frames);
   };
-  setKnobSprite(kbIn,  "tukan/76/MY1176B.png", 61);
-  setKnobSprite(kbOut, "tukan/76/MY1176B.png", 61);
-  setKnobSprite(kbAtt, "tukan/76/MY1176small.png", 61);
-  setKnobSprite(kbRel, "tukan/76/MY1176small.png", 61);
+  setKnobSprite(kbIn,  "", 61);
+  setKnobSprite(kbOut, "", 61);
+  setKnobSprite(kbAtt, "", 61);
+  setKnobSprite(kbRel, "", 61);
 
   // RM_1175 Ratio is an enum 0..4 {4,8,12,20,ALL}
   const ratioBtns = [
@@ -2237,6 +2246,16 @@ function buildPreAmpPanelControl(win, ctrl){
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const deg = -135 + pct * 270;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -2265,23 +2284,17 @@ function buildPreAmpPanelControl(win, ctrl){
   const swPre  = mk("tkSwitch", 260, 81, 48, 60);  // PRE ON/OFF
 
   const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
     el.dataset.frames = String(frames);
   };
   const setSwitchSprite = (el, url)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${2*100}%`;
     el.dataset.frames = "2";
   };
-  setKnobSprite(kbIn,  "tukan/pre/Preamp.png", 101);
-  setKnobSprite(kbOut, "tukan/pre/PreampOut.png", 101);
-  setKnobSprite(kbLow, "tukan/pre/PreampShelv.png", 101);
-  setKnobSprite(kbHigh,"tukan/pre/PreampShelv.png", 101);
-  setSwitchSprite(swDist, "tukan/pre/switch.png");
-  setSwitchSprite(swPre,  "tukan/pre/switch.png");
+  setKnobSprite(kbIn,  "", 101);
+  setKnobSprite(kbOut, "", 101);
+  setKnobSprite(kbLow, "", 101);
+  setKnobSprite(kbHigh,"", 101);
+  setSwitchSprite(swDist, "");
+  setSwitchSprite(swPre,  "");
 
 // --- VU overlays (telemetry sliders) ---
 const vuInSlot = document.createElement("div");
