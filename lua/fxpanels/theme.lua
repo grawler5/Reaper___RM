@@ -33,6 +33,7 @@ function theme.metrics(scale_factor)
     control_font = scale(m.control_font, s),
     control_pad_x = scale(m.control_pad_x, s),
     window_round = scale(m.window_round, s),
+    border_size = scale(m.border_size or 1, s),
     frame_round = scale(m.frame_round, s),
     child_round = scale(m.child_round, s),
     popup_round = scale(m.popup_round, s),
@@ -68,7 +69,9 @@ function theme.push(ctx, scale_factor)
   local c = theme.colors()
 
   PSV(reaper.ImGui_StyleVar_WindowRounding, m.window_round)
+  PSV(reaper.ImGui_StyleVar_WindowBorderSize, m.border_size)
   PSV(reaper.ImGui_StyleVar_FrameRounding, m.control_radius)
+  PSV(reaper.ImGui_StyleVar_FrameBorderSize, m.border_size)
   PSV(reaper.ImGui_StyleVar_ChildRounding, m.child_round)
   PSV(reaper.ImGui_StyleVar_PopupRounding, m.popup_round)
   PSV(reaper.ImGui_StyleVar_WindowPadding, m.window_pad_x, m.window_pad_y)

@@ -3,7 +3,7 @@ local compat = require('fxpanels.compat')
 
 local panel = {}
 
-panel.meta = { win_w = 620, win_h = 560, scale_mult = 1.0 }
+panel.meta = { win_w = 840, win_h = 320, scale_mult = 1.0 }
 
 local BASE_W = 800
 local BASE_H = 237
@@ -191,6 +191,12 @@ function panel.render(ctx, track, fx, ui, state)
 
   compat.set_cursor_screen_pos(ctx, x0, y0)
   if reaper.ImGui_Dummy then reaper.ImGui_Dummy(ctx, panel_w, panel_h) end
+end
+
+function panel.clear_cache()
+  for k in pairs(param_cache) do
+    param_cache[k] = nil
+  end
 end
 
 return panel

@@ -2,7 +2,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 720, win_h = 520, scale_mult = 1.0 }
+panel.meta = { win_w = 800, win_h = 500, scale_mult = 1.0 }
 
 local cache = {}
 
@@ -63,6 +63,12 @@ function panel.render(ctx, track, fx, ui, state)
 
   reaper.ImGui_Dummy(ctx, 0, 10 * scale)
   knob(ctx, track, fx, ui, scale, 'Output', map.output)
+end
+
+function panel.clear_cache()
+  for k in pairs(cache) do
+    cache[k] = nil
+  end
 end
 
 return panel
