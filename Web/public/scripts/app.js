@@ -1650,16 +1650,16 @@ function formatParam(p){
     const scale = document.createElement("div");
     scale.className = "vuScale";
     const ticks = [
-      {t:"-20", x:6},
-      {t:"-10", x:18},
-      {t:"-7", x:30},
-      {t:"-5", x:40},
-      {t:"-3", x:50},
-      {t:"-1", x:60},
-      {t:"0", x:70},
-      {t:"1", x:78},
-      {t:"2", x:86},
-      {t:"+", x:96},
+      {t:"-20", x:8},
+      {t:"-10", x:22},
+      {t:"7", x:36},
+      {t:"5", x:46},
+      {t:"3", x:56},
+      {t:"1", x:66},
+      {t:"0", x:76},
+      {t:"1", x:84},
+      {t:"2", x:92},
+      {t:"+", x:98},
     ];
     ticks.forEach((tick)=>{
       const span = document.createElement("span");
@@ -2071,16 +2071,16 @@ function buildNC76PanelControl(win, ctrl){
     const scale = document.createElement("div");
     scale.className = "vuScale";
     const ticks = [
-      {t:"-20", x:6},
-      {t:"-10", x:18},
-      {t:"-7", x:30},
-      {t:"-5", x:40},
-      {t:"-3", x:50},
-      {t:"-1", x:60},
-      {t:"0", x:70},
-      {t:"1", x:78},
-      {t:"2", x:86},
-      {t:"+", x:96},
+      {t:"-20", x:8},
+      {t:"-10", x:22},
+      {t:"7", x:36},
+      {t:"5", x:46},
+      {t:"3", x:56},
+      {t:"1", x:66},
+      {t:"0", x:76},
+      {t:"1", x:84},
+      {t:"2", x:92},
+      {t:"+", x:98},
     ];
     ticks.forEach((tick)=>{
       const span = document.createElement("span");
@@ -2687,7 +2687,9 @@ update();
 
     const setKnobValue = (el, val, min, max, color)=>{
       const pct = (max === min) ? 0 : Math.max(0, Math.min(1, (val - min) / (max - min)));
-      el.style.setProperty("--ring-pct", pct.toFixed(3));
+      const sweep = 240;
+      const deg = 210 + sweep * pct;
+      el.style.setProperty("--ring-pct", (deg / 360).toFixed(3));
       if (color) el.style.setProperty("--ring-color", color);
       return Math.round(val);
     };

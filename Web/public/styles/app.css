@@ -1865,9 +1865,9 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
 .pluginWin.layout_reacomp:not(.fullscreen){ width:min(960px, 92vw); height:min(640px, 90vh); }
 .pluginWin.layout_ns1:not(.fullscreen){ width:min(520px, 92vw); height:min(720px, 92vh); }
 .pluginWin.layout_rm_ns:not(.fullscreen){ width:min(420px, 92vw); height:min(560px, 92vh); }
-.pluginWin.layout_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(300px, 85vh); }
-.pluginWin.layout_rm_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(300px, 85vh); }
-.pluginWin.layout_rm_1175:not(.fullscreen){ width:min(1360px, 96vw); height:min(360px, 85vh); }
+.pluginWin.layout_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(260px, 70vh); }
+.pluginWin.layout_rm_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(260px, 70vh); }
+.pluginWin.layout_rm_1175:not(.fullscreen){ width:min(1360px, 96vw); height:min(320px, 70vh); }
 	.pluginWin.layout_rm_limiter2:not(.fullscreen){ width:min(600px, 92vw); height:min(440px, 86vh); }
 	.pluginWin.layout_rm_kicker50hz:not(.fullscreen){ width:min(720px, 92vw); height:min(440px, 86vh); }
 	.pluginWin.layout_rm_kicker50:not(.fullscreen){ width:min(720px, 92vw); height:min(440px, 86vh); }
@@ -4269,9 +4269,9 @@ background: linear-gradient(180deg,
   text-shadow:0 1px 1px rgba(0,0,0,0.6);
 }
 .preKnob::after{
-  top:-6%;
-  height:54%;
-  width:6%;
+  top:-10%;
+  height:32%;
+  width:4%;
 }
 .preKnob.preKnobSmall{
   font-size:10px;
@@ -4283,9 +4283,9 @@ background: linear-gradient(180deg,
   border-radius:999px;
   background:
     conic-gradient(
-      var(--ring-color, rgba(200,200,200,0.55)) 0deg,
+      rgba(180,180,180,0.6) 0deg,
       var(--ring-color, rgba(200,200,200,0.55)) calc(var(--ring-pct, 0) * 1turn),
-      rgba(255,255,255,0.08) 0
+      rgba(255,255,255,0.08) calc(var(--ring-pct, 0) * 1turn)
     );
   mask: radial-gradient(circle, transparent 66%, #000 67%);
   opacity:0.9;
@@ -4293,6 +4293,10 @@ background: linear-gradient(180deg,
 .preKnob .preKnobValue{
   position:relative;
   z-index:1;
+}
+.preKnob .preKnobValue{
+  line-height:1;
+  text-align:center;
 }
 .preKnob.inputRing{ --ring-color: rgba(255,120,120,0.9); }
 .preKnob.outputRing{ --ring-color: rgba(255,120,120,0.9); }
