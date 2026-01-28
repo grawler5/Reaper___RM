@@ -212,6 +212,59 @@ local function _right_align_from_window(ctx, right_w)
   end
 end
 
+local function packed_color(hex, alpha)
+  if not (reaper.ImGui_ColorConvertDouble4ToU32 and theme.rgba) then return nil end
+  local r, g, b, a = theme.rgba(hex, alpha)
+  return reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+end
+
+local function draw_window_chrome(ctx, scale)
+  if not (reaper.ImGui_GetWindowDrawList and reaper.ImGui_GetWindowPos and reaper.ImGui_GetWindowSize) then
+    return
+  end
+
+  local dl = reaper.ImGui_GetWindowDrawList(ctx)
+  local x, y = reaper.ImGui_GetWindowPos(ctx)
+  local w, h = reaper.ImGui_GetWindowSize(ctx)
+  local m = theme.metrics(scale)
+  local c = theme.colors()
+
+  local win_top = packed_color(c.window_top or c.panel, 1.0)
+  local win_bot = packed_color(c.window_bottom or c.panel_alt, 1.0)
+  if win_top and win_bot then
+    if reaper.ImGui_DrawList_AddRectFilledMultiColor then
+      pcall(reaper.ImGui_DrawList_AddRectFilledMultiColor, dl, x, y, x + w, y + h, win_top, win_top, win_bot, win_bot)
+    elseif reaper.ImGui_DrawList_AddRectFilled then
+      pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + w, y + h, win_top, m.window_round)
+    end
+  end
+
+  local header_h = m.topbar_h
+  local hdr_top = packed_color(c.topbar_top or c.panel, 1.0)
+  local hdr_bot = packed_color(c.topbar_bottom or c.panel_alt, 1.0)
+  if hdr_top and hdr_bot then
+    if reaper.ImGui_DrawList_AddRectFilledMultiColor then
+      pcall(reaper.ImGui_DrawList_AddRectFilledMultiColor, dl, x, y, x + w, y + header_h, hdr_top, hdr_top, hdr_bot, hdr_bot)
+    elseif reaper.ImGui_DrawList_AddRectFilled then
+      pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + w, y + header_h, hdr_top, m.window_round)
+    end
+  end
+
+  if reaper.ImGui_DrawList_AddLine then
+    local hdr_line = packed_color(c.topbar_border or c.border, 0.08)
+    if hdr_line then
+      pcall(reaper.ImGui_DrawList_AddLine, dl, x, y + header_h, x + w, y + header_h, hdr_line, m.border_size)
+    end
+  end
+
+  if reaper.ImGui_DrawList_AddRect then
+    local border_col = packed_color(c.window_border or c.border, 0.10)
+    if border_col then
+      pcall(reaper.ImGui_DrawList_AddRect, dl, x, y, x + w, y + h, border_col, m.window_round, 0, m.border_size)
+    end
+  end
+end
+
 local function header_row(ctx, ws, scale)
   local c = theme.colors()
   local m = theme.metrics(scale)
@@ -227,25 +280,28 @@ local function header_row(ctx, ws, scale)
 
   local btn_h = m.control_h
   local gap = m.toolbar_gap
-  local w_insp = 92 * scale
-  local w_on = 52 * scale
-  local w_x = 32 * scale
-
-  -- Header background
-  if reaper.ImGui_GetWindowDrawList and reaper.ImGui_DrawList_AddRectFilled then
-    local dl = reaper.ImGui_GetWindowDrawList(ctx)
-    local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
-    local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
-    local h = m.topbar_h * 0.75
-    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.panel_alt)) or nil
-    if dl and col and avail_w > 1 then
-      pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + avail_w, y + h, col, 10 * scale)
+  local pad_x = m.control_pad_x
+  local function button_w(label, fallback)
+    if reaper.ImGui_CalcTextSize then
+      local tw = select(1, reaper.ImGui_CalcTextSize(ctx, label)) or 0
+      return tw + pad_x * 2
     end
+    return (fallback or 60) * scale
+  end
+
+  local w_refresh = button_w('Refresh', 78)
+  local w_insp = button_w('Inspector', 96)
+  local w_on = math.max(button_w('ON', 52), button_w('OFF', 52))
+  local w_x = button_w('✕', 32)
+
+  local header_pad = math.max(0, (m.topbar_h - btn_h) * 0.5)
+  if header_pad > 0 then
+    reaper.ImGui_Dummy(ctx, 0, header_pad)
   end
 
   -- Header content (single line): title on the left, buttons pinned to the right.
-  local right_w = w_insp + gap + w_on + gap + w_x
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), m.control_pad_x, (btn_h - m.control_font) * 0.5)
+  local right_w = w_refresh + gap + w_insp + gap + w_on + gap + w_x
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), pad_x, (btn_h - m.control_font) * 0.5)
 
   reaper.ImGui_AlignTextToFramePadding(ctx)
   ui.push_color(ctx, reaper.ImGui_Col_Text, theme.rgba(c.text))
@@ -255,6 +311,18 @@ local function header_row(ctx, ws, scale)
   -- Buttons
   reaper.ImGui_SameLine(ctx, 0, 0)
   _right_align_from_window(ctx, right_w)
+
+  ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.panel))
+  ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
+  ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
+  if reaper.ImGui_Button(ctx, 'Refresh##' .. ws.id, w_refresh, btn_h) then
+    if ws.panel and ws.panel.clear_cache then
+      pcall(ws.panel.clear_cache)
+    end
+    ws.last_error = nil
+  end
+  pcall(reaper.ImGui_PopStyleColor, ctx, 3)
+  reaper.ImGui_SameLine(ctx, 0, gap)
 
   if ws.show_inspector then
     ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.slot))
@@ -295,23 +363,34 @@ local function header_row(ctx, ws, scale)
   ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
   ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
   ui.push_color(ctx, reaper.ImGui_Col_Text, theme.rgba(c.text))
-  if reaper.ImGui_Button(ctx, 'X##' .. ws.id, w_x, btn_h) then
+  if reaper.ImGui_Button(ctx, '✕##' .. ws.id, w_x, btn_h) then
     ws.request_close = true
   end
   pcall(reaper.ImGui_PopStyleColor, ctx, 4)
 
   pcall(reaper.ImGui_PopStyleVar, ctx)
 
-  reaper.ImGui_Dummy(ctx, 0, 6 * scale)
+  if header_pad > 0 then
+    reaper.ImGui_Dummy(ctx, 0, header_pad)
+  end
 end
 
 
 local function presets_row(ctx, ws, scale)
   local list = ws.presets or {}
-  local btn_h = 24 * scale
-  local gap = 6 * scale
-  local w_save = 64 * scale
-  local w_del = 74 * scale
+  local m = theme.metrics(scale)
+  local btn_h = m.control_h
+  local gap = m.toolbar_gap
+  local pad_x = m.control_pad_x
+  local function button_w(label, fallback)
+    if reaper.ImGui_CalcTextSize then
+      local tw = select(1, reaper.ImGui_CalcTextSize(ctx, label)) or 0
+      return tw + pad_x * 2
+    end
+    return (fallback or 60) * scale
+  end
+  local w_save = button_w('Save', 64)
+  local w_del = button_w('Delete', 74)
   local right_w = w_save + gap + w_del
 
   -- Compute dropdown width so Save/Delete stick to the right like in Web UI.
@@ -322,7 +401,7 @@ local function presets_row(ctx, ws, scale)
   local combo_w = math.max(160 * scale, avail_w - right_w - gap)
 
   -- Dropdown (left)
-  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), 10 * scale, 5 * scale)
+  reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), pad_x, (btn_h - m.control_font) * 0.5)
   if reaper.ImGui_PushItemWidth then reaper.ImGui_PushItemWidth(ctx, combo_w) end
 
   local preview = 'Default'
@@ -413,7 +492,11 @@ local function render_window(ctx, ws)
   local scale = get_ui_scale()
 
   if reaper.ImGui_SetNextWindowSizeConstraints then
-    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 420 * scale, 280 * scale, 4096 * scale, 4096 * scale)
+    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 360 * scale, 320 * scale, 4096 * scale, 4096 * scale)
+  end
+
+  if reaper.ImGui_SetNextWindowBgAlpha then
+    pcall(reaper.ImGui_SetNextWindowBgAlpha, ctx, 0.0)
   end
 
   local win_flags = 0
@@ -433,7 +516,7 @@ local function render_window(ctx, ws)
     local cond = E(reaper.ImGui_Cond_Appearing) or E(reaper.ImGui_Cond_FirstUseEver)
     pcall(reaper.ImGui_SetNextWindowSize, ctx, mw * scale, mh * scale, cond)
     if reaper.ImGui_SetNextWindowSizeConstraints then
-      pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 420 * scale, 280 * scale, 4096 * scale, 4096 * scale)
+      pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 360 * scale, 320 * scale, 4096 * scale, 4096 * scale)
     end
   end
 
@@ -447,6 +530,8 @@ local function render_window(ctx, ws)
     local frame_had_err = false
     local body_ok, body_err = xpcall(function()
       if shown then
+        draw_window_chrome(ctx, scale)
+
         if ws.panel and ws.panel.render_header then
           ws.panel.render_header(ctx, ws, scale, ui)
         else

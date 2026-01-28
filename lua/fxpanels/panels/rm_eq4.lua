@@ -2,7 +2,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 920, win_h = 720, scale_mult = 1.0 }
+panel.meta = { win_w = 920, win_h = 700, scale_mult = 1.0 }
 
 local cache = {}
 
@@ -72,6 +72,12 @@ function panel.render(ctx, track, fx, ui, state)
 
   reaper.ImGui_Text(ctx, 'Band 4')
   knob_row(ctx, track, fx, ui, scale, 'Freq', map.b4_freq, 'Gain', map.b4_gain, 'Q', map.b4_q)
+end
+
+function panel.clear_cache()
+  for k in pairs(cache) do
+    cache[k] = nil
+  end
 end
 
 return panel

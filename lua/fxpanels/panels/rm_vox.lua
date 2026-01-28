@@ -2,7 +2,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 480, win_h = 520, scale_mult = 1.0 }
+panel.meta = { win_w = 460, win_h = 460, scale_mult = 1.0 }
 
 local cache = {}
 
@@ -53,6 +53,12 @@ function panel.render(ctx, track, fx, ui, state)
   end
   if map.out_peak ~= nil then
     ui.meter_v(ctx, clamp01(params.get_norm(track, fx, map.out_peak)), scale, 180)
+  end
+end
+
+function panel.clear_cache()
+  for k in pairs(cache) do
+    cache[k] = nil
   end
 end
 

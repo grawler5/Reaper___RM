@@ -2,7 +2,7 @@ local params = require('fxpanels.params')
 
 local panel = {}
 
-panel.meta = { win_w = 860, win_h = 520, scale_mult = 1.5 }
+panel.meta = { win_w = 980, win_h = 520, scale_mult = 1.5 }
 
 local cache = {}
 
@@ -38,6 +38,12 @@ function panel.render(ctx, track, fx, ui, state)
   knob(ctx, track, fx, ui, scale, 'High', map.high)
   reaper.ImGui_SameLine(ctx, 0, 16 * scale)
   knob(ctx, track, fx, ui, scale, 'Trim', map.trim)
+end
+
+function panel.clear_cache()
+  for k in pairs(cache) do
+    cache[k] = nil
+  end
 end
 
 return panel
