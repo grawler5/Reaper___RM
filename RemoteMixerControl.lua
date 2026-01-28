@@ -16,6 +16,9 @@ local LOG_POLL_INTERVAL = 2.0
 local ctx_name = 'ReaperRM Control'
 local ctx = nil
 
+-- Forward-declare UI globals (must be declared BEFORE any functions that reference them)
+local ui = nil
+
 local state = {
   ui_visible = true,
   show_diag = false,
@@ -363,12 +366,10 @@ do
   package.path = base .. '/?.lua;' .. base .. '/?/init.lua;' .. package.path
 end
 
-local ui = nil
 do
   local ok, mod = pcall(require, 'fxpanels.ui')
   if ok then ui = mod end
 end
-local theme = nil
 do
   local ok, mod = pcall(require, 'fxpanels.theme')
   if ok then theme = mod end
