@@ -1865,9 +1865,9 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
 .pluginWin.layout_reacomp:not(.fullscreen){ width:min(960px, 92vw); height:min(640px, 90vh); }
 .pluginWin.layout_ns1:not(.fullscreen){ width:min(520px, 92vw); height:min(720px, 92vh); }
 .pluginWin.layout_rm_ns:not(.fullscreen){ width:min(420px, 92vw); height:min(560px, 92vh); }
-.pluginWin.layout_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(320px, 85vh); }
-.pluginWin.layout_rm_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(320px, 85vh); }
-	.pluginWin.layout_rm_1175:not(.fullscreen){ width:min(940px, 94vw); height:min(300px, 80vh); }
+.pluginWin.layout_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(300px, 85vh); }
+.pluginWin.layout_rm_la1a:not(.fullscreen){ width:min(840px, 92vw); height:min(300px, 85vh); }
+.pluginWin.layout_rm_1175:not(.fullscreen){ width:min(1360px, 96vw); height:min(360px, 85vh); }
 	.pluginWin.layout_rm_limiter2:not(.fullscreen){ width:min(600px, 92vw); height:min(440px, 86vh); }
 	.pluginWin.layout_rm_kicker50hz:not(.fullscreen){ width:min(720px, 92vw); height:min(440px, 86vh); }
 	.pluginWin.layout_rm_kicker50:not(.fullscreen){ width:min(720px, 92vw); height:min(440px, 86vh); }
@@ -3589,6 +3589,11 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
   mask: radial-gradient(circle, transparent 62%, #000 63%);
   opacity:0.55;
 }
+.tukanSkin .tkKnob.ticked.arc::before{
+  mask:
+    conic-gradient(from 210deg, #000 0deg 240deg, transparent 240deg 360deg),
+    radial-gradient(circle, transparent 62%, #000 63%);
+}
 .tukanSkin .tkKnob::after{
   content: "";
   position: absolute;
@@ -3647,6 +3652,21 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
     );
   opacity:0.45;
   pointer-events:none;
+}
+.tukanSkin .vuScale{
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:8px;
+  height:20px;
+  font-size:10px;
+  color:rgba(0,0,0,0.65);
+  text-shadow:0 1px 0 rgba(255,255,255,0.35);
+  pointer-events:none;
+}
+.tukanSkin .vuScale span{
+  position:absolute;
+  transform:translateX(-50%);
 }
 .tukanSkin .tkVuFace::before{
   content:"";
@@ -4247,6 +4267,11 @@ background: linear-gradient(180deg,
   font-size:12px;
   font-weight:700;
   text-shadow:0 1px 1px rgba(0,0,0,0.6);
+}
+.preKnob::after{
+  top:-6%;
+  height:54%;
+  width:6%;
 }
 .preKnob.preKnobSmall{
   font-size:10px;

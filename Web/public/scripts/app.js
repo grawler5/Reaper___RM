@@ -1580,10 +1580,10 @@ function formatParam(p){
   };
 
   // Controls (top-left coordinates)
-  const swLC = mk("tkSwitch", 55, 130, 48, 60);         // LIMIT/COMPRESS
-  const swSC = mk("tkSwitch", 665, 90, 48, 60);         // SIDECHAIN INT (mapped to Side chain)
-  const kbGain = mk("tkKnob", 165, 130, 70, 80);        // GAIN
-  const kbPR   = mk("tkKnob", 565, 130, 70, 80);        // PEAK REDUCTION
+  const swLC = mk("tkSwitch", 55, 118, 48, 60);         // LIMIT/COMPRESS
+  const swSC = mk("tkSwitch", 665, 118, 48, 60);        // SIDECHAIN INT (mapped to Side chain)
+  const kbGain = mk("tkKnob ticked arc", 165, 130, 70, 80);        // GAIN
+  const kbPR   = mk("tkKnob ticked arc", 565, 130, 70, 80);        // PEAK REDUCTION
   kbGain.style.height = kbGain.style.width;
   kbPR.style.height = kbPR.style.width;
 
@@ -1619,10 +1619,57 @@ function formatParam(p){
   };
   mkLabel("laLabel", "LIMIT", 46, 92, 66);
   mkLabel("laLabel small", "COMPRESS", 38, 196, 82);
-  mkLabel("laLabel", "SC", 658, 52, 48);
-  mkLabel("laLabel small", "INT", 660, 156, 48);
+  mkLabel("laLabel", "SC", 658, 92, 48);
+  mkLabel("laLabel small", "INT", 660, 196, 48);
   mkLabel("laLabel", "GAIN", 168, 208, 70);
   mkLabel("laLabel", "PEAK REDUCTION", 520, 208, 160);
+
+  const addArcLabels = (labels, cx, cy, radius, startDeg, endDeg, cls)=>{
+    const count = labels.length;
+    labels.forEach((label, idx)=>{
+      const t = (count === 1) ? 0.5 : (idx / (count - 1));
+      const deg = startDeg + (endDeg - startDeg) * t;
+      const rad = deg * Math.PI / 180;
+      const x = cx + Math.cos(rad) * radius;
+      const y = cy + Math.sin(rad) * radius;
+      mkLabel(cls, label, x - 10, y - 6, 20);
+    });
+  };
+  addArcLabels(
+    ["0","10","20","30","40","50","60","70","80","90","100"],
+    200, 165, 48, 210, 330,
+    "laLabel small"
+  );
+  addArcLabels(
+    ["0","10","20","30","40","50","60","70","80","90","100"],
+    600, 165, 48, 210, 330,
+    "laLabel small"
+  );
+
+  const addVuScale = (face)=>{
+    const scale = document.createElement("div");
+    scale.className = "vuScale";
+    const ticks = [
+      {t:"-20", x:6},
+      {t:"-10", x:18},
+      {t:"-7", x:30},
+      {t:"-5", x:40},
+      {t:"-3", x:50},
+      {t:"-1", x:60},
+      {t:"0", x:70},
+      {t:"1", x:78},
+      {t:"2", x:86},
+      {t:"+", x:96},
+    ];
+    ticks.forEach((tick)=>{
+      const span = document.createElement("span");
+      span.textContent = tick.t;
+      span.style.left = tick.x + "%";
+      scale.appendChild(span);
+    });
+    face.appendChild(scale);
+  };
+  addVuScale(vuFace);
 
   // Sprites
   const setKnobSprite = (el, _url, frames)=>{
@@ -1785,6 +1832,23 @@ p.raw = rt;
 
     el.addEventListener("pointerup", endDrag);
     el.addEventListener("pointercancel", endDrag);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"61",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbGain);
   bindKnob(kbPR);
@@ -1947,10 +2011,10 @@ function buildNC76PanelControl(win, ctrl){
     return el;
   };
 
-  const kbIn  = mk("tkKnob ticked", 80, 60, 100, 100);
-  const kbOut = mk("tkKnob ticked", 270, 60, 100, 100);
-  const kbAtt = mk("tkKnob ticked", 460, 53, 40, 40);
-  const kbRel = mk("tkKnob ticked", 460, 133, 40, 40);
+  const kbIn  = mk("tkKnob ticked arc", 80, 60, 100, 100);
+  const kbOut = mk("tkKnob ticked arc", 270, 60, 100, 100);
+  const kbAtt = mk("tkKnob ticked arc", 460, 53, 40, 40);
+  const kbRel = mk("tkKnob ticked arc", 460, 133, 40, 40);
 
   // 1176-style reverse timing: display is inverted vs parameter
   kbAtt.dataset.inv = "1";
@@ -1988,6 +2052,45 @@ function buildNC76PanelControl(win, ctrl){
   mkLabel("nc76Label small", "FAST", 485, 86, 50);
   mkLabel("nc76Label small", "SLOW", 425, 166, 50);
   mkLabel("nc76Label small", "FAST", 485, 166, 50);
+
+  const addArcLabels = (labels, cx, cy, radius, startDeg, endDeg, cls)=>{
+    const count = labels.length;
+    labels.forEach((label, idx)=>{
+      const t = (count === 1) ? 0.5 : (idx / (count - 1));
+      const deg = startDeg + (endDeg - startDeg) * t;
+      const rad = deg * Math.PI / 180;
+      const x = cx + Math.cos(rad) * radius;
+      const y = cy + Math.sin(rad) * radius;
+      mkLabel(cls, label, x - 12, y - 6, 24);
+    });
+  };
+  addArcLabels(["∞","24d","0dB"], 130, 110, 66, 210, 330, "nc76Label small");
+  addArcLabels(["∞","24d","0dB"], 320, 110, 66, 210, 330, "nc76Label small");
+
+  const addVuScale = (face)=>{
+    const scale = document.createElement("div");
+    scale.className = "vuScale";
+    const ticks = [
+      {t:"-20", x:6},
+      {t:"-10", x:18},
+      {t:"-7", x:30},
+      {t:"-5", x:40},
+      {t:"-3", x:50},
+      {t:"-1", x:60},
+      {t:"0", x:70},
+      {t:"1", x:78},
+      {t:"2", x:86},
+      {t:"+", x:96},
+    ];
+    ticks.forEach((tick)=>{
+      const span = document.createElement("span");
+      span.textContent = tick.t;
+      span.style.left = tick.x + "%";
+      scale.appendChild(span);
+    });
+    face.appendChild(scale);
+  };
+  addVuScale(vuFace);
 
 
   const setKnobSprite = (el, url, frames)=>{
@@ -2095,6 +2198,23 @@ const frames = parseInt(el.dataset.frames||"61",10);
     } };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"61",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbIn); bindKnob(kbOut); bindKnob(kbAtt); bindKnob(kbRel);
 
@@ -2337,28 +2457,19 @@ function buildPreAmpPanelControl(win, ctrl){
     skin.appendChild(el);
     return el;
   };
-  mkLabel("preLabel", "MODE", 18, 38, 70);
-  mkLabel("preLabel", "DIST", 22, 64, 64);
-  mkLabel("preLabel small muted", "PRE", 26, 146, 56);
+  mkLabel("preLabel", "MODE", 14, 38, 80);
+  mkLabel("preLabel", "DIST", 20, 64, 64);
+  mkLabel("preLabel small muted", "PRE", 22, 146, 64);
 
-  mkLabel("preLabel", "PRE STAGE", 230, 38, 110);
-  mkLabel("preLabel small", "ON", 270, 64, 48);
-  mkLabel("preLabel small muted", "OFF", 268, 146, 52);
+  mkLabel("preLabel", "PRE STAGE", 246, 38, 90);
+  mkLabel("preLabel small", "ON", 254, 64, 70);
+  mkLabel("preLabel small muted", "OFF", 254, 146, 70);
 
   mkLabel("preLabel", "INPUT", 130, 24, 90);
-  mkLabel("preLabel small muted", "0DB", 92, 154, 40);
-  mkLabel("preLabel small", "15DB", 162, 132, 50);
-  mkLabel("preLabel small muted", "30DB", 220, 154, 50);
 
   mkLabel("preLabel", "OUTPUT", 130, 226, 90);
   mkLabel("preLabel", "LOW EQ", 16, 244, 70);
   mkLabel("preLabel", "HI EQ", 255, 244, 70);
-  mkLabel("preLabel small muted", "-20DB", 6, 324, 50);
-  mkLabel("preLabel small muted", "0DB", 45, 262, 40);
-  mkLabel("preLabel small muted", "+20DB", 52, 328, 55);
-  mkLabel("preLabel small muted", "-20DB", 240, 324, 50);
-  mkLabel("preLabel small muted", "0DB", 280, 262, 40);
-  mkLabel("preLabel small muted", "+20DB", 286, 328, 55);
 
   const knobValue = (el)=>{
     const v = document.createElement("div");
@@ -2500,6 +2611,23 @@ const frames = parseInt(el.dataset.frames||"101",10);
     } };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"101",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbIn); bindKnob(kbOut); bindKnob(kbLow); bindKnob(kbHigh);
 
