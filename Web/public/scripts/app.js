@@ -1584,6 +1584,8 @@ function formatParam(p){
   const swSC = mk("tkSwitch", 665, 90, 48, 60);         // SIDECHAIN INT (mapped to Side chain)
   const kbGain = mk("tkKnob", 165, 130, 70, 80);        // GAIN
   const kbPR   = mk("tkKnob", 565, 130, 70, 80);        // PEAK REDUCTION
+  kbGain.style.height = kbGain.style.width;
+  kbPR.style.height = kbPR.style.width;
 
   // Invert Peak Reduction knob direction: left = minimum reduction, right = maximum reduction.
   // Under the hood this knob drives Threshold (dB), where *lower* values mean *more* reduction.
@@ -1604,6 +1606,23 @@ function formatParam(p){
   needle.style.height = needleLen + "px";
   needle.style.transform = "translateX(-50%) rotate(-25deg)";
   skin.appendChild(needle);
+
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("laLabel", "LIMIT", 46, 92, 66);
+  mkLabel("laLabel small", "COMPRESS", 38, 196, 82);
+  mkLabel("laLabel", "SC", 658, 52, 48);
+  mkLabel("laLabel small", "INT", 660, 156, 48);
+  mkLabel("laLabel", "GAIN", 168, 208, 70);
+  mkLabel("laLabel", "PEAK REDUCTION", 520, 208, 160);
 
   // Sprites
   const setKnobSprite = (el, _url, frames)=>{
@@ -1928,10 +1947,10 @@ function buildNC76PanelControl(win, ctrl){
     return el;
   };
 
-  const kbIn  = mk("tkKnob", 80, 60, 100, 100);
-  const kbOut = mk("tkKnob", 270, 60, 100, 100);
-  const kbAtt = mk("tkKnob", 460, 53, 40, 40);
-  const kbRel = mk("tkKnob", 460, 133, 40, 40);
+  const kbIn  = mk("tkKnob ticked", 80, 60, 100, 100);
+  const kbOut = mk("tkKnob ticked", 270, 60, 100, 100);
+  const kbAtt = mk("tkKnob ticked", 460, 53, 40, 40);
+  const kbRel = mk("tkKnob ticked", 460, 133, 40, 40);
 
   // 1176-style reverse timing: display is inverted vs parameter
   kbAtt.dataset.inv = "1";
@@ -1951,6 +1970,26 @@ function buildNC76PanelControl(win, ctrl){
   needle.style.transform = "translateX(-50%) rotate(-25deg)";
   skin.appendChild(needle);
 
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("nc76Label", "INPUT", 80, 170, 100);
+  mkLabel("nc76Label", "OUTPUT", 270, 170, 100);
+  mkLabel("nc76Label small", "ATTACK", 430, 30, 80);
+  mkLabel("nc76Label small", "RELEASE", 426, 112, 90);
+  mkLabel("nc76Label small", "SLOW", 425, 86, 50);
+  mkLabel("nc76Label small", "FAST", 485, 86, 50);
+  mkLabel("nc76Label small", "SLOW", 425, 166, 50);
+  mkLabel("nc76Label small", "FAST", 485, 166, 50);
+
+
   const setKnobSprite = (el, url, frames)=>{
     el.dataset.frames = String(frames);
   };
@@ -1968,6 +2007,7 @@ function buildNC76PanelControl(win, ctrl){
   ].map(b=>{
     const el = mk("tkBtn", b.x, b.y, 35, 35);
     el.dataset.raw = String(b.raw);
+    el.textContent = String(b.raw === 3 ? 20 : b.raw === 2 ? 12 : b.raw === 1 ? 8 : 4);
     return el;
   });
 
@@ -1975,6 +2015,10 @@ function buildNC76PanelControl(win, ctrl){
   const optSCKey = mk("tkBtn", 820, 75, 35, 35);
   const optTrick = mk("tkBtn", 820, 110, 35, 35);
   const optAllIn = mk("tkBtn", 820, 145, 35, 35);
+  optPunch.textContent = "P";
+  optSCKey.textContent = "SC";
+  optTrick.textContent = "TR";
+  optAllIn.textContent = "ALL";
 
   // --- Dynamic param mapping ---
   let idxIn=null, idxOut=null, idxAtt=null, idxRel=null, idxRatio=null, idxPunch=null, idxSCKey=null, idxTrick=null, idxGR=null;
@@ -2276,12 +2320,57 @@ function buildPreAmpPanelControl(win, ctrl){
   };
 
   // Controls (top-left coordinates)
-  const kbIn   = mk("tkKnob", 120, 50, 110, 110);
-  const kbOut  = mk("tkKnob", 120, 250, 110, 110);
-  const kbLow  = mk("tkKnob", 30, 275, 60, 60);
-  const kbHigh = mk("tkKnob", 260, 275, 60, 60);
+  const kbIn   = mk("tkKnob preKnob inputRing", 120, 50, 110, 110);
+  const kbOut  = mk("tkKnob preKnob outputRing", 120, 250, 110, 110);
+  const kbLow  = mk("tkKnob preKnob preKnobSmall eqRing", 30, 275, 60, 60);
+  const kbHigh = mk("tkKnob preKnob preKnobSmall eqRing", 260, 275, 60, 60);
   const swDist = mk("tkSwitch", 30, 81, 48, 60);   // DIST
   const swPre  = mk("tkSwitch", 260, 81, 48, 60);  // PRE ON/OFF
+
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("preLabel", "MODE", 18, 38, 70);
+  mkLabel("preLabel", "DIST", 22, 64, 64);
+  mkLabel("preLabel small muted", "PRE", 26, 146, 56);
+
+  mkLabel("preLabel", "PRE STAGE", 230, 38, 110);
+  mkLabel("preLabel small", "ON", 270, 64, 48);
+  mkLabel("preLabel small muted", "OFF", 268, 146, 52);
+
+  mkLabel("preLabel", "INPUT", 130, 24, 90);
+  mkLabel("preLabel small muted", "0DB", 92, 154, 40);
+  mkLabel("preLabel small", "15DB", 162, 132, 50);
+  mkLabel("preLabel small muted", "30DB", 220, 154, 50);
+
+  mkLabel("preLabel", "OUTPUT", 130, 226, 90);
+  mkLabel("preLabel", "LOW EQ", 16, 244, 70);
+  mkLabel("preLabel", "HI EQ", 255, 244, 70);
+  mkLabel("preLabel small muted", "-20DB", 6, 324, 50);
+  mkLabel("preLabel small muted", "0DB", 45, 262, 40);
+  mkLabel("preLabel small muted", "+20DB", 52, 328, 55);
+  mkLabel("preLabel small muted", "-20DB", 240, 324, 50);
+  mkLabel("preLabel small muted", "0DB", 280, 262, 40);
+  mkLabel("preLabel small muted", "+20DB", 286, 328, 55);
+
+  const knobValue = (el)=>{
+    const v = document.createElement("div");
+    v.className = "preKnobValue";
+    v.textContent = "0";
+    el.appendChild(v);
+    return v;
+  };
+  const kbInVal = knobValue(kbIn);
+  const kbOutVal = knobValue(kbOut);
+  const kbLowVal = knobValue(kbLow);
+  const kbHighVal = knobValue(kbHigh);
 
   const setKnobSprite = (el, url, frames)=>{
     el.dataset.frames = String(frames);
@@ -2326,8 +2415,8 @@ skin.appendChild(vuOutSlot);
 // Clip LED under "OVER"
 const overLed = document.createElement("div");
 overLed.className = "preOverLed";
-overLed.style.left = "218px";
-overLed.style.top  = "262px";
+  overLed.style.left = "228px";
+  overLed.style.top  = "262px";
 skin.appendChild(overLed);
 
   // --- Dynamic mapping ---
@@ -2467,6 +2556,26 @@ update();
     if (pOut) setSpriteFrame(kbOut, frameFromNorm(pOut.value||0, 101, false), 101);
     if (pLow) setSpriteFrame(kbLow, frameFromNorm(pLow.value||0, 101, false), 101);
     if (pHigh) setSpriteFrame(kbHigh, frameFromNorm(pHigh.value||0, 101, false), 101);
+
+    const setKnobValue = (el, val, min, max, color)=>{
+      const pct = (max === min) ? 0 : Math.max(0, Math.min(1, (val - min) / (max - min)));
+      el.style.setProperty("--ring-pct", pct.toFixed(3));
+      if (color) el.style.setProperty("--ring-color", color);
+      return Math.round(val);
+    };
+    const readDb = (p, min, max)=>{
+      if (!p) return min;
+      if (p.raw != null && Number.isFinite(p.raw)) return p.raw;
+      return min + (Number(p.value||0)) * (max - min);
+    };
+    const inDb = readDb(pIn, 0, 30);
+    const outDb = readDb(pOut, 0, 30);
+    const lowDb = readDb(pLow, -20, 20);
+    const highDb = readDb(pHigh, -20, 20);
+    kbInVal.textContent = setKnobValue(kbIn, inDb, 0, 30, "rgba(255,120,120,0.9)") + "dB";
+    kbOutVal.textContent = setKnobValue(kbOut, outDb, 0, 30, "rgba(255,120,120,0.9)") + "dB";
+    kbLowVal.textContent = setKnobValue(kbLow, lowDb, -20, 20, "rgba(120,170,255,0.9)") + "dB";
+    kbHighVal.textContent = setKnobValue(kbHigh, highDb, -20, 20, "rgba(120,170,255,0.9)") + "dB";
     setSpriteFrame(swDist, (!!pDist && (pDist.value||0) >= 0.5) ? 1 : 0, 2);
     setSpriteFrame(swPre,  (!!pPre && (pPre.value||0) >= 0.5) ? 1 : 0, 2);
 
