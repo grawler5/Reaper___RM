@@ -1,0 +1,82 @@
+-- Web UI design tokens extracted from Web/public/styles/app.css :root.
+-- These tokens must be the single source of truth for all UI styling.
+
+local tokens = {
+  colors = {
+    bg = '#1a1c1f',
+    surface = '#2a2d31',
+    elevated = '#22252a',
+    border = '#3a3f46',
+    text = '#e6e6e6',
+    textMuted = '#a8a8a8',
+    accent = '#3b78ff',
+    accentHover = '#2a72ff',
+    danger = '#ff3b3b',
+    warn = '#ff9b3b',
+    success = '#48ff83',
+    slot = '#343a43',
+    childTint = { 80, 90, 110, 0.25 },
+    topbarGradient = { '#1b1d20', '#141518' },
+    topbarBorder = '#0b0c0e',
+  },
+  radii = {
+    xs = 4,
+    sm = 6,
+    md = 8,
+    lg = 14,
+  },
+  spacing = {
+    s2 = 2,
+    s4 = 4,
+    s8 = 8,
+    s12 = 12,
+    s16 = 16,
+    s24 = 24,
+  },
+  typography = {
+    family = 'system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial',
+    sizes = {
+      caption = 10,
+      label = 11,
+      body = 12,
+      title = 14,
+    },
+    weights = {
+      regular = 400,
+      medium = 500,
+      semibold = 600,
+      bold = 700,
+    },
+  },
+  metrics = {
+    topbarHeight = 46,
+    controlHeight = 28,
+    controlWidth = 30,
+    controlRadius = 8,
+    controlFont = 12,
+    controlPadX = 10,
+    stripWidth = 124,
+    windowRound = 14,
+    frameRound = 8,
+    childRound = 10,
+    popupRound = 10,
+    windowPadX = 14,
+    windowPadY = 12,
+    itemSpaceX = 10,
+    itemSpaceY = 8,
+    toolbarGap = 8,
+    cardPadX = 14,
+    cardPadY = 12,
+    sliderTrackHeight = 4,
+    sliderThumbSize = 14,
+    knobSize = 64,
+    knobArcWidth = 4,
+  },
+  shadows = {
+    soft = { offset = { 0, 2 }, blur = 6, color = { 0, 0, 0, 0.35 } },
+    medium = { offset = { 0, 4 }, blur = 12, color = { 0, 0, 0, 0.45 } },
+    inset = { offset = { 0, 1 }, blur = 2, color = { 0, 0, 0, 0.4 }, inset = true },
+  },
+}
+
+return tokens
