@@ -121,6 +121,15 @@ function registry.get_panel(panel_key)
   return panels[panel_key]
 end
 
+function registry.list_keys()
+  local keys = {}
+  for key in pairs(panels) do
+    keys[#keys + 1] = key
+  end
+  table.sort(keys)
+  return keys
+end
+
 -- Supported = any RM_ plugin (or em_eq2 alias). We show generic UI if we don't have a custom panel.
 function registry.is_supported_fx(fx_name)
   local cleaned = registry.normalize_fx_name(fx_name)

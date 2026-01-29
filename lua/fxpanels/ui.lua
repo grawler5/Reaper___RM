@@ -198,9 +198,10 @@ function ui.meter_v(ctx, value, scale, height)
 
     reaper.ImGui_InvisibleButton(ctx, '##meter' .. tostring(x) .. ':' .. tostring(y), w, h)
 
-    local bg = reaper.ImGui_ColorConvertDouble4ToU32(0.10, 0.10, 0.12, 1.0)
-    local fg = reaper.ImGui_ColorConvertDouble4ToU32(0.28, 0.72, 0.40, 1.0)
-    local bd = reaper.ImGui_ColorConvertDouble4ToU32(0.25, 0.25, 0.28, 1.0)
+    local c = theme.colors()
+    local bg = reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.elevated))
+    local fg = reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.success))
+    local bd = reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.border))
 
     reaper.ImGui_DrawList_AddRectFilled(draw, x, y, x2, y2, bg)
     reaper.ImGui_DrawList_AddRectFilled(draw, x, fill_y, x2, y2, fg)
