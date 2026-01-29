@@ -4,7 +4,10 @@ local tokens = require('fxpanels.tokens.web_tokens')
 local theme = {}
 
 local function hex_to_rgba(hex, alpha)
-  local h = hex:gsub('#', '')
+  if hex == nil then
+    return 0, 0, 0, alpha or 1.0
+  end
+  local h = tostring(hex):gsub('#', '')
   if #h == 3 then
     h = h:sub(1, 1):rep(2) .. h:sub(2, 2):rep(2) .. h:sub(3, 3):rep(2)
   end
