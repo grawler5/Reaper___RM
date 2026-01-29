@@ -22,7 +22,7 @@ local ui = nil
 local state = {
   ui_visible = true,
   show_diag = false,
-  show_scenes = false,
+  scenes_window = false,
   autostart_done = false,
   last_poll = 0,
   last_log_poll = 0,
@@ -183,18 +183,15 @@ local function draw_scenes_manager()
   local data = state.scenes_data
   local cur = scenes_current(data)
 
-  local card_open, card_child, card_scope = ui.card_begin(ctx, 'sc_card', 1.0, 0, 0)
-  if card_open then
-    ui.section_title(ctx, 'Scenes manager (project)')
-    local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
-    reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, 'Save##sc', 1.0) then scenes_save(data) end
-    reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, 'Reload##sc', 1.0) then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
-    ui.toolbar_end(ctx, toolbar_scope)
+  ui.section_title(ctx, 'Scenes manager (project)')
+  local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
+  reaper.ImGui_SameLine(ctx, 0, 8)
+  if ui.button_secondary(ctx, 'Save##sc', 1.0) then scenes_save(data) end
+  reaper.ImGui_SameLine(ctx, 0, 8)
+  if ui.button_secondary(ctx, 'Reload##sc', 1.0) then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
+  ui.toolbar_end(ctx, toolbar_scope)
 
-    reaper.ImGui_Separator(ctx)
-  end
+  reaper.ImGui_Separator(ctx)
 
   -- Scene selector
   local cur_name = cur and cur.name or 'main'
@@ -241,10 +238,7 @@ local function draw_scenes_manager()
     end
   end
 
-  if not cur then
-    ui.card_end(ctx, card_child, card_scope)
-    return
-  end
+  if not cur then return end
 
   -- Master track for scene
   local tracks = get_tracks_flat()
@@ -335,7 +329,23 @@ local function draw_scenes_manager()
       reaper.ImGui_EndChild(ctx)
     end
   end
-  ui.card_end(ctx, card_child, card_scope)
+end
+
+local function draw_scenes_window()
+  if not state.scenes_window then return end
+  if not reaper.ImGui_Begin then return end
+  local ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'Scenes manager', true)
+  if not ok then
+    state.scenes_window = false
+    return
+  end
+  if open == false then
+    state.scenes_window = false
+  end
+  if visible then
+    draw_scenes_manager()
+  end
+  pcall(reaper.ImGui_End, ctx)
 end
 local function hb_write(key)
   ext_set(key, string.format('%.6f', now()), false)
@@ -729,8 +739,8 @@ local function draw_window()
       if state.show_diag then poll_logs() end
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, state.show_scenes and 'Hide scenes' or 'Show scenes', 1.0) then
-      state.show_scenes = not state.show_scenes
+    if ui.button_secondary(ctx, state.scenes_window and 'Hide scenes' or 'Show scenes', 1.0) then
+      state.scenes_window = not state.scenes_window
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
     if ui.button_ghost(ctx, 'Hide window', 1.0) then
@@ -740,11 +750,6 @@ local function draw_window()
     ui.toolbar_end(ctx, toolbar_scope)
 
     reaper.ImGui_Separator(ctx)
-
-    if state.show_scenes then
-      draw_scenes_manager()
-      reaper.ImGui_Separator(ctx)
-    end
 
     local st = state.status or {}
     local bridge_conn = tostring(ext_get('BridgeConnected')) == '1'
@@ -773,13 +778,9 @@ local function draw_window()
       end
     end
 
-    local status_opened, status_child, status_scope = ui.card_begin(ctx, '##rm_status_card', 1.0, 0, 0)
-    if status_opened then
-      ui.section_title(ctx, 'Status')
-      status_line('Server', st.running, 'URL: ' .. url_for(st))
-      status_line('Bridge', bridge_conn, bridge_conn and 'Connected' or (bridge_err ~= '' and ('Error: ' .. bridge_err) or 'Disconnected'))
-    end
-    ui.card_end(ctx, status_child, status_scope)
+    ui.section_title(ctx, 'Status')
+    status_line('Server', st.running, 'URL: ' .. url_for(st))
+    status_line('Bridge', bridge_conn, bridge_conn and 'Connected' or (bridge_err ~= '' and ('Error: ' .. bridge_err) or 'Disconnected'))
 
     if ui.button_primary(ctx, 'Start all', 1.0) then
       spawn_daemon()
@@ -851,6 +852,7 @@ local function draw_window()
   end
 
   pcall(reaper.ImGui_End, ctx)
+  draw_scenes_window()
   theme.pop(ctx, sv, sc)
 end
 
