@@ -36,43 +36,55 @@ METER_BUFFER_LIMIT = 1_000_000
 LOG_BUFFER_MAX = 400
 
 
-def _script_root() -> str:
+def _script_dir_from_file() -> Optional[str]:
     try:
         return os.path.abspath(os.path.dirname(__file__))
     except Exception:
-        pass
+        return None
+
+
+def _script_file_from_file() -> Optional[str]:
+    try:
+        return os.path.abspath(__file__)
+    except Exception:
+        return None
+
+
+def _script_dir_from_global() -> Optional[str]:
     try:
         script_dir = globals().get("SCRIPT_DIR")
         if script_dir:
             return os.path.abspath(script_dir)
     except Exception:
         pass
+    return None
+
+
+def _resource_script_root() -> Optional[str]:
     try:
         resource = RPR_GetResourcePath()
         if isinstance(resource, tuple):
             resource = resource[0]
         return os.path.join(str(resource), "Scripts", "ReaperRM")
     except Exception:
-        return os.getcwd()
+        return None
+
+
+def _script_root() -> str:
+    for candidate in (_script_dir_from_file(), _script_dir_from_global(), _resource_script_root()):
+        if candidate:
+            return candidate
+    return os.getcwd()
+
 
 def _script_path() -> str:
-    try:
-        return os.path.abspath(__file__)
-    except Exception:
-        pass
-    try:
-        script_dir = globals().get("SCRIPT_DIR")
-        if script_dir:
-            return os.path.join(os.path.abspath(script_dir), "RemoteMixerLauncher.py")
-    except Exception:
-        pass
-    try:
-        resource = RPR_GetResourcePath()
-        if isinstance(resource, tuple):
-            resource = resource[0]
-        return os.path.join(str(resource), "Scripts", "ReaperRM", "RemoteMixerLauncher.py")
-    except Exception:
-        return os.path.join(os.getcwd(), "RemoteMixerLauncher.py")
+    script_file = _script_file_from_file()
+    if script_file:
+        return script_file
+    script_dir = _script_dir_from_global() or _resource_script_root()
+    if script_dir:
+        return os.path.join(script_dir, "RemoteMixerLauncher.py")
+    return os.path.join(os.getcwd(), "RemoteMixerLauncher.py")
 
 
 def _web_root() -> str:
@@ -154,26 +166,18 @@ def _pythonw_executable() -> str:
     return sys.executable
 
 
-def _http_get(url: str, timeout: float = 1.5) -> Tuple[int, str]:
+def _http_request(
+    url: str,
+    method: str,
+    data: Optional[bytes],
+    timeout: float,
+) -> Tuple[int, str]:
     import urllib.request
     import urllib.error
 
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:
-            body = resp.read().decode("utf-8", "replace")
-            return resp.status, body
-    except urllib.error.HTTPError as err:
-        return err.code, err.read().decode("utf-8", "replace")
-    except Exception:
-        return 0, ""
-
-
-def _http_post(url: str, data: Optional[bytes] = None, timeout: float = 2.0) -> Tuple[int, str]:
-    import urllib.request
-    import urllib.error
-
-    req = urllib.request.Request(url, data=data or b"{}", method="POST")
-    req.add_header("Content-Type", "application/json")
+    req = urllib.request.Request(url, data=data, method=method)
+    if data is not None:
+        req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read().decode("utf-8", "replace")
@@ -182,6 +186,14 @@ def _http_post(url: str, data: Optional[bytes] = None, timeout: float = 2.0) -> 
         return err.code, err.read().decode("utf-8", "replace")
     except Exception:
         return 0, ""
+
+
+def _http_get(url: str, timeout: float = 1.5) -> Tuple[int, str]:
+    return _http_request(url, "GET", None, timeout)
+
+
+def _http_post(url: str, data: Optional[bytes] = None, timeout: float = 2.0) -> Tuple[int, str]:
+    return _http_request(url, "POST", data or b"{}", timeout)
 
 
 def _lan_ip() -> str:
@@ -214,7 +226,7 @@ def _read_json(path: str) -> Dict[str, Any]:
 def _write_json_atomic(path: str, payload: Dict[str, Any]) -> None:
     folder = os.path.dirname(path)
     if folder and not os.path.exists(folder):
-        os.makedirs(folder)
+        os.makedirs(folder, exist_ok=True)
     temp_path = path + ".tmp"
     with open(temp_path, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(payload, handle, ensure_ascii=True, indent=2)
@@ -299,6 +311,13 @@ def expand_with_parents(tracks: List[Dict[str, Any]], allowed_set: Set[str]) -> 
     return include
 
 
+def has_full_access(user: str, cfg: Dict[str, Any]) -> bool:
+    return bool(
+        user
+        and (user == cfg["admin"] or user == "main" or cfg["assignments"].get(user, {}).get("all"))
+    )
+
+
 def filter_state_for(ws: "WebSocketClient", state: Dict[str, Any], cfg: Dict[str, Any]) -> Dict[str, Any]:
     user = getattr(ws, "user", "")
     if not user:
@@ -312,7 +331,7 @@ def filter_state_for(ws: "WebSocketClient", state: Dict[str, Any], cfg: Dict[str
             "ts": state.get("ts"),
             "version": state.get("version"),
         }
-    if user == cfg["admin"] or user == "main" or cfg["assignments"].get(user, {}).get("all"):
+    if has_full_access(user, cfg):
         return state
     allowed = allowed_guids_for(user, cfg)
     expanded = expand_with_parents(state.get("tracks") or [], allowed or set())
@@ -329,7 +348,7 @@ def filter_meter_for(ws: "WebSocketClient", meter: Dict[str, Any], cfg: Dict[str
         filtered = dict(meter)
         filtered["frames"] = []
         return filtered
-    if user == cfg["admin"] or user == "main" or cfg["assignments"].get(user, {}).get("all"):
+    if has_full_access(user, cfg):
         return meter
     allowed = allowed_guids_for(user, cfg)
     frames = [f for f in meter.get("frames") or [] if allowed and f.get("guid") in allowed]
@@ -342,7 +361,7 @@ def can_control(ws: "WebSocketClient", guid: str, cfg: Dict[str, Any]) -> bool:
     user = getattr(ws, "user", "")
     if not user:
         return False
-    if user == cfg["admin"] or user == "main" or cfg["assignments"].get(user, {}).get("all"):
+    if has_full_access(user, cfg):
         return True
     allowed = allowed_guids_for(user, cfg)
     return bool(allowed and guid in allowed)
@@ -402,11 +421,8 @@ async def run_daemon() -> None:
     def _write_projects() -> None:
         _write_json_atomic(_projects_path(), projects)
 
-    def _broadcast_project_info() -> None:
-        if not current_project_id:
-            return
-        cfg = ensure_project_cfg(projects, current_project_id, current_project_name)
-        payload = {
+    def _project_info_payload(cfg: Dict[str, Any]) -> Dict[str, Any]:
+        return {
             "type": "projectInfo",
             "projectId": current_project_id,
             "projectName": current_project_name,
@@ -418,6 +434,15 @@ async def run_daemon() -> None:
                 "mon2": cfg["assignments"]["mon2"]["guids"],
             },
         }
+
+    async def _send_project_info(ws: web.WebSocketResponse, cfg: Dict[str, Any]) -> None:
+        await ws.send_str(json.dumps(_project_info_payload(cfg)))
+
+    def _broadcast_project_info() -> None:
+        if not current_project_id:
+            return
+        cfg = ensure_project_cfg(projects, current_project_id, current_project_name)
+        payload = _project_info_payload(cfg)
         for ws in list(ws_clients):
             asyncio.create_task(ws.send_str(json.dumps(payload)))
 
@@ -444,22 +469,7 @@ async def run_daemon() -> None:
 
         if current_project_id:
             cfg = ensure_project_cfg(projects, current_project_id, current_project_name)
-            await ws.send_str(
-                json.dumps(
-                    {
-                        "type": "projectInfo",
-                        "projectId": current_project_id,
-                        "projectName": current_project_name,
-                        "users": cfg["users"],
-                        "admin": cfg["admin"],
-                        "ui": cfg["ui"],
-                        "assignments": {
-                            "mon1": cfg["assignments"]["mon1"]["guids"],
-                            "mon2": cfg["assignments"]["mon2"]["guids"],
-                        },
-                    }
-                )
-            )
+            await _send_project_info(ws, cfg)
 
         async for msg in ws:
             if msg.type != aiohttp.WSMsgType.TEXT:

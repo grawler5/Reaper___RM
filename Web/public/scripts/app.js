@@ -183,8 +183,10 @@ import { getDebugFlag } from "./modules/env.js?v=fix-strips-2026-01-23d";
     id: "rm_1175",
     match: (name)=> /\bRM[\s_]*1175\b/i.test(name),
     title: "RM_1175",
-    winW: 520,
-    winH: 560,
+    // Reference UI is wide/short; match FX panel size (1.5x NC76 base 906x213).
+    winW: 1120,
+    winH: 420,
+    scaleMult: 0.85,
     sections: [
       { title: "", controls: [ {type:"nc76Panel"} ] }
     ]
@@ -194,8 +196,9 @@ import { getDebugFlag } from "./modules/env.js?v=fix-strips-2026-01-23d";
     id: "rm_la1a",
     match: (name)=> /\bRM[\s_]*LA1A\b/i.test(name),
     title: "RM_LA1A",
-    winW: 620,
-    winH: 560,
+    // Match the original LA-1A horizontal faceplate proportions.
+    winW: 920,
+    winH: 380,
     sections: [
       { title: "", controls: [ {type:"la1aPanel", extra:{gainFind:[/\bgain\b/i], peakFind:[/peak\s*reduction/i], modeFind:[/\bmode\b|compress|limit/i], detectFind:[/peak\s*detection|detection/i], sidechainFind:[/side\s*chain/i], grFind:[/telemetry.*\bgr\b/i]} } ] }
     ]
@@ -1549,6 +1552,18 @@ function formatParam(p){
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const a0 = (el.dataset && el.dataset.a0!=null) ? parseFloat(el.dataset.a0) : -135;
+      const as = (el.dataset && el.dataset.as!=null) ? parseFloat(el.dataset.as) : 270;
+      const deg = a0 + pct * as;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -1570,18 +1585,23 @@ function formatParam(p){
   };
 
   // Controls (top-left coordinates)
-  const swLC = mk("tkSwitch", 55, 130, 48, 60);         // LIMIT/COMPRESS
-  const swSC = mk("tkSwitch", 665, 90, 48, 60);         // SIDECHAIN INT (mapped to Side chain)
-  const kbGain = mk("tkKnob", 165, 130, 70, 80);        // GAIN
-  const kbPR   = mk("tkKnob", 565, 130, 70, 80);        // PEAK REDUCTION
+  const swLC = mk("tkSwitch", 55, 118, 48, 60);         // LIMIT/COMPRESS
+  const swSC = mk("tkSwitch", 665, 118, 48, 60);        // SIDECHAIN INT (mapped to Side chain)
+  const kbGain = mk("tkKnob arc", 165, 130, 70, 80);        // GAIN
+  const kbPR   = mk("tkKnob arc", 565, 130, 70, 80);        // PEAK REDUCTION
+  kbGain.style.height = kbGain.style.width;
+  kbPR.style.height = kbPR.style.width;
+
+
+  // Knob arc mapping: 0 at ~8 o'clock, max at ~4 o'clock (matches scales).
+  [kbGain, kbPR].forEach((k)=>{ try{ k.dataset.a0 = "240"; k.dataset.as = "240"; }catch(_){ } });
 
   // Invert Peak Reduction knob direction: left = minimum reduction, right = maximum reduction.
   // Under the hood this knob drives Threshold (dB), where *lower* values mean *more* reduction.
   kbPR.dataset.inv = "1";
 
-  // Meter face (CCVU2 is drawn inside the frame on LABack)
+  // Meter face (CCVU2 is drawn inside the legacy LA frame)
   const vuFace = mk("tkVuFace", 305, 85, 190, 92);
-  vuFace.style.backgroundImage = "url(tukan/la/CCVU2.png)";
 
   // Needle (pivot is slightly below the visible face, matching the JSFX line draw)
   // Shift pivot a bit left so the 0-mark lines up visually with GR=0.
@@ -1593,26 +1613,119 @@ function formatParam(p){
   needle.style.left = Math.round(pivotX) + "px";
   needle.style.top  = Math.round(pivotY - needleLen) + "px";
   needle.style.height = needleLen + "px";
-  needle.style.transform = "translateX(-50%) rotate(-25deg)";
+  needle.style.transform = "translateX(-50%) rotate(25deg)";
   skin.appendChild(needle);
 
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("laLabel", "LIMIT", 46, 92, 66);
+  mkLabel("laLabel small", "COMPRESS", 38, 196, 82);
+  mkLabel("laLabel", "SC", 665, 92, 48);
+  mkLabel("laLabel small", "INT", 665, 196, 48);
+  mkLabel("laLabel", "GAIN", 168, 208, 70);
+  mkLabel("laLabel", "PEAK REDUCTION", 520, 208, 160);
+
+  // Dial markings inside the knob faces (reference style: numbers + dots, no outer spokes).
+  const addInnerDialScale = (knobEl, maxVal=100, majorStepVal=10, minorStepVal=5)=>{
+    const svgns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.classList.add("tkDialScale", "la", "inner");
+    svg.style.position = "absolute";
+    svg.style.inset = "0";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    svg.style.pointerEvents = "none";
+    knobEl.appendChild(svg);
+
+    const mid = 50;
+    const rDot  = 44;
+    const rText = 34;
+    const startDeg = 240;
+    const endDeg = 120;
+    const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
+    const sweep = endAdj - startDeg;
+
+    const steps = Math.max(4, Math.round(maxVal / minorStepVal));
+    for (let i=0;i<=steps;i++){
+      const val = minorStepVal * i;
+      const isMajor = (Math.round(val) % majorStepVal) === 0;
+      const deg = startDeg + sweep*(i/steps);
+      const rad = deg * Math.PI/180;
+
+      const xDot = mid + Math.sin(rad) * rDot;
+      const yDot = mid - Math.cos(rad) * rDot;
+
+      if (!isMajor){
+        const c = document.createElementNS(svgns, "circle");
+        c.setAttribute("cx", xDot.toFixed(2));
+        c.setAttribute("cy", yDot.toFixed(2));
+        c.setAttribute("r", "1.4");
+        c.setAttribute("class", "dot");
+        svg.appendChild(c);
+      }else{
+        const tx = mid + Math.sin(rad) * rText;
+        const ty = mid - Math.cos(rad) * rText;
+        const t = document.createElementNS(svgns, "text");
+        t.textContent = String(Math.round(val));
+        t.setAttribute("x", tx.toFixed(2));
+        t.setAttribute("y", ty.toFixed(2));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("dominant-baseline", "middle");
+        t.setAttribute("class", "label");
+        svg.appendChild(t);
+      }
+    }
+  };
+  addInnerDialScale(kbGain, 100, 10, 5);
+  addInnerDialScale(kbPR,   100, 10, 5);
+
+
+  const addVuScale = (face)=>{
+    const scale = document.createElement("div");
+    scale.className = "vuScale";
+    const ticks = [
+      {t:"20", x:10},
+      {t:"10", x:24},
+      {t:"7",  x:36},
+      {t:"5",  x:46},
+      {t:"3",  x:56},
+      {t:"1",  x:66},
+      {t:"0",  x:76},
+      {t:"1",  x:84, pos:1},
+      {t:"2",  x:92, pos:1},
+      {t:"+",  x:98, pos:1},
+    ];
+    ticks.forEach((tick)=>{
+      const span = document.createElement("span");
+      span.textContent = tick.t;
+      if (tick.pos) span.classList.add("pos");
+      span.style.left = tick.x + "%";
+      scale.appendChild(span);
+    });
+    face.appendChild(scale);
+  };
+  addVuScale(vuFace);
+
   // Sprites
-  const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
+  const setKnobSprite = (el, _url, frames)=>{
     el.dataset.frames = String(frames);
   };
-  const setSwitchSprite = (el, url)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${2*100}%`;
+  const setSwitchSprite = (el, _url)=>{
     el.dataset.frames = "2";
   };
-  setKnobSprite(kbGain, "tukan/la/machick.png", 61);
-  setKnobSprite(kbPR,   "tukan/la/machick.png", 61);
-  setSwitchSprite(swLC, "tukan/la/switch.png");
-  setSwitchSprite(swSC, "tukan/la/switch.png");
+  setKnobSprite(kbGain, "", 61);
+  setKnobSprite(kbPR,   "", 61);
+  setSwitchSprite(swLC, "");
+  setSwitchSprite(swSC, "");
 
   // --- Dynamic param mapping (do NOT capture param objects, only indices) ---
   let idxGain = null, idxThr = null, idxPRLegacy = null, idxMode = null, idxSC = null, idxGR = null;
@@ -1763,12 +1876,29 @@ p.raw = rt;
 
     el.addEventListener("pointerup", endDrag);
     el.addEventListener("pointercancel", endDrag);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"61",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbGain);
   bindKnob(kbPR);
 
   // Sidechain switch (bool)
-  function bindBoolSwitch(el){
+  const bindBoolSwitch = (el)=>{
     el.addEventListener("click", ()=>{
       remap();
       const pIdx = parseInt(el.dataset.idx,10);
@@ -1782,7 +1912,7 @@ p.raw = rt;
             try{ setDraggedParamValue(win, pIdx, next); }catch(_){ }
 update();
     });
-  }
+  };
   bindBoolSwitch(swSC);
 
   // Compress/Limit toggle (Mode 0..1)
@@ -1831,7 +1961,7 @@ update();
     grTarget = Math.max(0, Math.min(24, rawPR));
   };
 
-  const fit = ()=>{
+  const fit_1956 = ()=>{
     const bodyEl = host.closest(".pluginWinBody");
     const ctrlEl = host.closest(".plugCtrl");
     const scope = ctrlEl || bodyEl || host.closest(".pluginParamList") || host;
@@ -1848,12 +1978,12 @@ update();
     skin.style.transform = `scale(${sc})`;
   };
   try{
-    const ro = new ResizeObserver(()=>fit());
+    const ro = new ResizeObserver(()=>fit_1956());
     const obs = host.closest(".pluginParamList") || host;
     ro.observe(obs);
     host._ro = ro;
   }catch(_){}
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_1956);
 
   const update = ()=>{
     remap();
@@ -1886,15 +2016,62 @@ function buildNC76PanelControl(win, ctrl){
   stage.className = "tukanStage";
   host.appendChild(stage);
 
+  // Stage must have an explicit size; children are absolutely positioned.
+  // Without this, layout scaling/centering becomes unstable and hit-testing breaks.
+  stage.style.width = BASE_W + "px";
+  stage.style.height = BASE_H + "px";
+
   const skin = document.createElement("div");
   skin.className = "tukanSkin nc76Skin";
   skin.style.width = BASE_W + "px";
   skin.style.height = BASE_H + "px";
   stage.appendChild(skin);
 
+  // Auto-fit (and allow RM_1175 to be 1.5x like the reference screenshot).
+  const _fxName = (()=>{ try{ return getFxNameFromCache(win.guid, win.fxIndex) || ""; }catch(_){ return ""; } })();
+  const _is1175 = /\bRM[\s_]*1175\b/i.test(_fxName) || /\b1175\b/i.test(_fxName);
+  const _targetScale = _is1175 ? 0.88 : 1.0;
+  const fit_2026 = ()=>{
+    const bodyEl = host.closest(".pluginWinBody");
+    const ctrlEl = host.closest(".plugCtrl");
+    const scope = ctrlEl || bodyEl || host.closest(".pluginParamList") || host;
+    const pad = 0;
+    const availW = Math.max(10, scope.clientWidth - pad*2);
+    const availH = Math.max(10, scope.clientHeight - pad*2);
+    let sc = Math.min(availW/BASE_W, availH/BASE_H);
+    const maxScale = (win && win.el && win.el.classList && win.el.classList.contains("fullscreen"))
+      ? (_targetScale * 1.35)
+      : _targetScale;
+    sc = Math.max(0.25, Math.min(maxScale, sc));
+    stage.style.width = (BASE_W*sc) + "px";
+    stage.style.height = (BASE_H*sc) + "px";
+    stage.style.margin = "auto";
+    stage.style.alignSelf = "center";
+    skin.style.transform = `scale(${sc})`;
+  };
+  try{
+    const ro = new ResizeObserver(()=>fit_2026());
+    const obs = host.closest(".pluginParamList") || host;
+    ro.observe(obs);
+    host._ro = ro;
+  }catch(_){ }
+  requestAnimationFrame(fit_2026);
+
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const a0 = (el.dataset && el.dataset.a0!=null) ? parseFloat(el.dataset.a0) : -135;
+      const as = (el.dataset && el.dataset.as!=null) ? parseFloat(el.dataset.as) : 270;
+      const deg = a0 + pct * as;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -1915,17 +2092,20 @@ function buildNC76PanelControl(win, ctrl){
     return el;
   };
 
-  const kbIn  = mk("tkKnob", 80, 60, 100, 100);
-  const kbOut = mk("tkKnob", 270, 60, 100, 100);
-  const kbAtt = mk("tkKnob", 460, 53, 40, 40);
-  const kbRel = mk("tkKnob", 460, 133, 40, 40);
+  const kbIn  = mk("tkKnob arc", 80, 60, 100, 100);
+  const kbOut = mk("tkKnob arc", 270, 60, 100, 100);
+  const kbAtt = mk("tkKnob arc", 460, 53, 40, 40);
+  const kbRel = mk("tkKnob arc", 460, 133, 40, 40);
+
+
+  // Knob arc mapping: 0 at ~8 o'clock, max at ~4 o'clock (matches numeric scales).
+  [kbIn, kbOut, kbAtt, kbRel].forEach((k)=>{ try{ k.dataset.a0 = "240"; k.dataset.as = "240"; }catch(_){ } });
 
   // 1176-style reverse timing: display is inverted vs parameter
   kbAtt.dataset.inv = "1";
   kbRel.dataset.inv = "1";
 
   const vuFace = mk("tkVuFace", 605, 55, 190, 92);
-  vuFace.style.backgroundImage = "url(tukan/76/CCVU2.png)";
 
   // VU meter window is 92px tall (y=55..147). Keep the pivot on the bottom edge.
   const needleLen = 78;
@@ -1936,19 +2116,151 @@ function buildNC76PanelControl(win, ctrl){
   needle.style.left = pivotX + "px";
   needle.style.top  = (pivotY - needleLen) + "px";
   needle.style.height = needleLen + "px";
-  needle.style.transform = "translateX(-50%) rotate(-25deg)";
+  needle.style.transform = "translateX(-50%) rotate(25deg)";
   skin.appendChild(needle);
 
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("nc76Label", "INPUT", 80, 170, 100);
+  mkLabel("nc76Label", "OUTPUT", 270, 170, 100);
+  mkLabel("nc76Label small", "ATTACK", 440, 30, 80);
+  mkLabel("nc76Label small", "RELEASE", 435, 112, 90);
+  mkLabel("nc76Label small", "SLOW", 425, 86, 50);
+  mkLabel("nc76Label small", "FAST", 485, 86, 50);
+  mkLabel("nc76Label small", "SLOW", 425, 166, 50);
+  mkLabel("nc76Label small", "FAST", 485, 166, 50);
+
+  // Dial markings (reference style: numbers + small dots between numbers; no spokes).
+  const addDialScale = (cx, cy, boxSize, startDeg, endDeg, maxVal, majorStepVal, minorStepVal=2)=>{
+    const svgns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${boxSize} ${boxSize}`);
+    svg.classList.add("tkDialScale", "nc");
+    svg.style.left = (cx - boxSize/2) + "px";
+    svg.style.top  = (cy - boxSize/2) + "px";
+    svg.style.width = boxSize + "px";
+    svg.style.height = boxSize + "px";
+    skin.appendChild(svg);
+
+    const mid = boxSize/2;
+    const rDot  = boxSize*0.42;
+    const rText = boxSize*0.46;
+
+    const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
+    const sweep = endAdj - startDeg;
+
+    const steps = Math.max(4, Math.round(maxVal / minorStepVal));
+    for (let i=0;i<=steps;i++){
+      const val = minorStepVal * i;
+      const isMajor = (Math.round(val) % majorStepVal) === 0;
+      const deg = startDeg + sweep*(i/steps);
+      const rad = deg * Math.PI/180;
+
+      const xDot = mid + Math.sin(rad) * rDot;
+      const yDot = mid - Math.cos(rad) * rDot;
+
+      if (!isMajor){
+        const c = document.createElementNS(svgns, "circle");
+        c.setAttribute("cx", xDot.toFixed(2));
+        c.setAttribute("cy", yDot.toFixed(2));
+        c.setAttribute("r", (boxSize*0.010).toFixed(2));
+        c.setAttribute("class", "dot");
+        svg.appendChild(c);
+      }else{
+        const tx = mid + Math.sin(rad) * rText;
+        const ty = mid - Math.cos(rad) * rText;
+        const t = document.createElementNS(svgns, "text");
+        t.textContent = String(Math.round(val));
+        t.setAttribute("x", tx.toFixed(2));
+        t.setAttribute("y", ty.toFixed(2));
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("dominant-baseline", "middle");
+        t.setAttribute("class", "label");
+        svg.appendChild(t);
+      }
+    }
+  };
+
+  // Arc goes over the top: left-bottom (8 o'clock) -> right-bottom (4 o'clock).
+  addDialScale(130, 110, 190, 240, 120, 48, 6);
+  addDialScale(320, 110, 190, 240, 120, 48, 6);
+
+
+  // Timing knobs: add intermediate dots between SLOW and FAST (no spokes from center).
+  const addTimingDots = (cx, cy, boxSize, startDeg, endDeg, countBetween=5)=>{
+    const svgns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${boxSize} ${boxSize}`);
+    svg.classList.add("tkDialScale", "timing");
+    svg.style.left = (cx - boxSize/2) + "px";
+    svg.style.top  = (cy - boxSize/2) + "px";
+    svg.style.width = boxSize + "px";
+    svg.style.height = boxSize + "px";
+    skin.appendChild(svg);
+
+    const mid = boxSize/2;
+    const rDot = boxSize*0.44;
+    const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
+    const sweep = endAdj - startDeg;
+
+    const total = Math.max(1, countBetween+1);
+    for (let i=1;i<total;i++){
+      const deg = startDeg + sweep*(i/total);
+      const rad = deg * Math.PI/180;
+      const c = document.createElementNS(svgns, "circle");
+      c.setAttribute("cx", (mid + Math.sin(rad)*rDot).toFixed(2));
+      c.setAttribute("cy", (mid - Math.cos(rad)*rDot).toFixed(2));
+      c.setAttribute("r", (boxSize*0.018).toFixed(2));
+      c.setAttribute("class", "dot");
+      svg.appendChild(c);
+    }
+  };
+  addTimingDots(480, 73, 78, 240, 120, 5);
+  addTimingDots(480, 153, 78, 240, 120, 5);
+
+
+  const addVuScale = (face)=>{
+    const scale = document.createElement("div");
+    scale.className = "vuScale";
+    const ticks = [
+      {t:"20", x:10},
+      {t:"10", x:24},
+      {t:"7",  x:36},
+      {t:"5",  x:46},
+      {t:"3",  x:56},
+      {t:"1",  x:66},
+      {t:"0",  x:76},
+      {t:"1",  x:84, pos:1},
+      {t:"2",  x:92, pos:1},
+      {t:"+",  x:98, pos:1},
+    ];
+    ticks.forEach((tick)=>{
+      const span = document.createElement("span");
+      span.textContent = tick.t;
+      if (tick.pos) span.classList.add("pos");
+            span.style.left = tick.x + "%";
+      scale.appendChild(span);
+    });
+    face.appendChild(scale);
+  };
+  addVuScale(vuFace);
+
+
   const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
     el.dataset.frames = String(frames);
   };
-  setKnobSprite(kbIn,  "tukan/76/MY1176B.png", 61);
-  setKnobSprite(kbOut, "tukan/76/MY1176B.png", 61);
-  setKnobSprite(kbAtt, "tukan/76/MY1176small.png", 61);
-  setKnobSprite(kbRel, "tukan/76/MY1176small.png", 61);
+  setKnobSprite(kbIn,  "", 61);
+  setKnobSprite(kbOut, "", 61);
+  setKnobSprite(kbAtt, "", 61);
+  setKnobSprite(kbRel, "", 61);
 
   // RM_1175 Ratio is an enum 0..4 {4,8,12,20,ALL}
   const ratioBtns = [
@@ -1959,6 +2271,7 @@ function buildNC76PanelControl(win, ctrl){
   ].map(b=>{
     const el = mk("tkBtn", b.x, b.y, 35, 35);
     el.dataset.raw = String(b.raw);
+    el.textContent = String(b.raw === 3 ? 20 : b.raw === 2 ? 12 : b.raw === 1 ? 8 : 4);
     return el;
   });
 
@@ -1966,6 +2279,10 @@ function buildNC76PanelControl(win, ctrl){
   const optSCKey = mk("tkBtn", 820, 75, 35, 35);
   const optTrick = mk("tkBtn", 820, 110, 35, 35);
   const optAllIn = mk("tkBtn", 820, 145, 35, 35);
+  optPunch.textContent = "P";
+  optSCKey.textContent = "SC";
+  optTrick.textContent = "TR";
+  optAllIn.textContent = "ALL";
 
   // --- Dynamic param mapping ---
   let idxIn=null, idxOut=null, idxAtt=null, idxRel=null, idxRatio=null, idxPunch=null, idxSCKey=null, idxTrick=null, idxGR=null;
@@ -1975,15 +2292,31 @@ function buildNC76PanelControl(win, ctrl){
     const ps = Array.isArray(win.params) ? win.params : [];
     const find = (arr)=> (arr && Array.isArray(ps)) ? findParamByPatterns(ps, arr) : null;
 
-    const pIn    = find(ex.inputFind)  || ps.find(p=>/\bin\s*gain\b/i.test(String(p.name||"")))   || ps.find(p=>p.index===5) || null;
-    const pOut   = find(ex.outputFind) || ps.find(p=>/\bout\s*gain\b/i.test(String(p.name||"")))  || ps.find(p=>p.index===1) || null;
-    const pAtt   = find(ex.attackFind) || ps.find(p=>/\battack\b/i.test(String(p.name||"")))      || ps.find(p=>p.index===2) || null;
-    const pRel   = find(ex.releaseFind)|| ps.find(p=>/\brelease\b/i.test(String(p.name||"")))     || ps.find(p=>p.index===3) || null;
-    const pRatio = find(ex.ratioFind)  || ps.find(p=>/\bratio\b/i.test(String(p.name||"")))        || ps.find(p=>p.index===0) || null;
+    const pIn    = find(ex.inputFind)
+      || ps.find(p=>/^\s*input\b/i.test(String(p.name||"")))
+      || ps.find(p=>/\bin\s*gain\b/i.test(String(p.name||"")))
+      || ps.find(p=>p.index===0) || ps.find(p=>p.index===5) || null;
+    const pOut   = find(ex.outputFind)
+      || ps.find(p=>/^\s*output\b/i.test(String(p.name||"")))
+      || ps.find(p=>/\bout\s*gain\b/i.test(String(p.name||"")))
+      || ps.find(p=>p.index===1) || null;
+    const pAtt   = find(ex.attackFind)
+      || ps.find(p=>/^\s*attack\b/i.test(String(p.name||"")))
+      || ps.find(p=>p.index===2) || null;
+    const pRel   = find(ex.releaseFind)
+      || ps.find(p=>/^\s*release\b/i.test(String(p.name||"")))
+      || ps.find(p=>p.index===3) || null;
+    const pRatio = find(ex.ratioFind)
+      || ps.find(p=>/^\s*ratio\b/i.test(String(p.name||"")))
+      || ps.find(p=>p.index===4) || null;
     const pPunch = find(ex.punchFind)  || ps.find(p=>/\bpunch\b/i.test(String(p.name||"")))        || ps.find(p=>p.index===6) || null;
     const pSCKey = find(ex.sckeyFind)  || ps.find(p=>/\bsc[\-\s]*key\b/i.test(String(p.name||""))) || ps.find(p=>p.index===7) || null;
     const pTrick = find(ex.trickFind)  || ps.find(p=>/\btrick\b/i.test(String(p.name||"")))        || ps.find(p=>p.index===8) || null;
-    const pGR    = find(ex.grFind)     || ps.find(p=>/gain\s*reduction/i.test(String(p.name||"")))  || ps.find(p=>/^\s*gr\b/i.test(String(p.name||""))) || ps.find(p=>/\bgr\b/i.test(String(p.name||""))) || ps.find(p=>p.index===4) || ps.find(p=>p.index===5) || null;
+    const pGR    = find(ex.grFind)
+      || ps.find(p=>/gain\s*reduction/i.test(String(p.name||"")))
+      || ps.find(p=>/^\s*gr\b/i.test(String(p.name||"")))
+      || ps.find(p=>/\bgr\b/i.test(String(p.name||"")))
+      || null;
     if (pIn) idxIn = pIn.index;
     if (pOut) idxOut = pOut.index;
     if (pAtt) idxAtt = pAtt.index;
@@ -2042,6 +2375,23 @@ const frames = parseInt(el.dataset.frames||"61",10);
     } };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"61",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbIn); bindKnob(kbOut); bindKnob(kbAtt); bindKnob(kbRel);
 
@@ -2160,27 +2510,6 @@ update();
 
   const updateTrackMeter = ()=>{ grTarget = computeGR(); };
 
-  const fit = ()=>{
-    const bodyEl = host.closest(".pluginWinBody");
-    const ctrlEl = host.closest(".plugCtrl");
-    const scope = ctrlEl || bodyEl || host.closest(".pluginParamList") || host;
-    const pad = 0;
-    const availW = Math.max(10, scope.clientWidth - pad*2);
-    const availH = Math.max(10, scope.clientHeight - pad*2);
-    let sc = Math.min(availW/BASE_W, availH/BASE_H);
-    const maxScale = (win && win.el && win.el.classList && win.el.classList.contains("fullscreen")) ? 2.0 : 1.0;
-    sc = Math.max(0.25, Math.min(maxScale, sc));
-    stage.style.width = (BASE_W*sc) + "px";
-    stage.style.height = (BASE_H*sc) + "px";
-    skin.style.transform = `scale(${sc})`;
-  };
-  try{
-    const ro = new ResizeObserver(()=>fit());
-    const obs = host.closest(".pluginParamList") || host;
-    ro.observe(obs);
-    host._ro = ro;
-  }catch(_){}
-  requestAnimationFrame(fit);
 
   const update = ()=>{
     remap();
@@ -2237,6 +2566,18 @@ function buildPreAmpPanelControl(win, ctrl){
   const clamp01 = (x)=>Math.max(0, Math.min(1, x));
   const setSpriteFrame = (el, frame, frames)=>{
     const f = Math.max(0, Math.min(frames-1, frame|0));
+    if (el.classList.contains("tkKnob")){
+      const pct = (frames<=1) ? 0 : (f/(frames-1));
+      const a0 = (el.dataset && el.dataset.a0!=null) ? parseFloat(el.dataset.a0) : -135;
+      const as = (el.dataset && el.dataset.as!=null) ? parseFloat(el.dataset.as) : 270;
+      const deg = a0 + pct * as;
+      el.style.setProperty("--rot", deg + "deg");
+      return;
+    }
+    if (el.classList.contains("tkSwitch")){
+      el.classList.toggle("on", f >= 1);
+      return;
+    }
     const pct = (frames<=1) ? 0 : (f/(frames-1))*100;
     el.style.backgroundPositionY = pct + "%";
   };
@@ -2257,31 +2598,65 @@ function buildPreAmpPanelControl(win, ctrl){
   };
 
   // Controls (top-left coordinates)
-  const kbIn   = mk("tkKnob", 120, 50, 110, 110);
-  const kbOut  = mk("tkKnob", 120, 250, 110, 110);
-  const kbLow  = mk("tkKnob", 30, 275, 60, 60);
-  const kbHigh = mk("tkKnob", 260, 275, 60, 60);
+  const kbIn   = mk("tkKnob preKnob inputRing", 120, 50, 110, 110);
+  const kbOut  = mk("tkKnob preKnob outputRing", 120, 250, 110, 110);
+  const kbLow  = mk("tkKnob preKnob preKnobSmall eqRing", 30, 275, 60, 60);
+  const kbHigh = mk("tkKnob preKnob preKnobSmall eqRing", 260, 275, 60, 60);
   const swDist = mk("tkSwitch", 30, 81, 48, 60);   // DIST
   const swPre  = mk("tkSwitch", 260, 81, 48, 60);  // PRE ON/OFF
 
+
+  // Preamp knob arc mapping (rm_air-style): start ~7 o'clock, end ~5 o'clock (clockwise).
+  [kbIn, kbOut, kbLow, kbHigh].forEach((k)=>{ try{ k.dataset.a0 = "210"; k.dataset.as = "300"; }catch(_){ } });
+
+  const mkLabel = (cls, text, x, y, w)=>{
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    if (w) el.style.width = w + "px";
+    skin.appendChild(el);
+    return el;
+  };
+  mkLabel("preLabel", "MODE", 14, 38, 80);
+  mkLabel("preLabel", "DIST", 20, 64, 64);
+  mkLabel("preLabel small muted", "PRE", 22, 146, 64);
+
+  mkLabel("preLabel", "PRE STAGE", 246, 38, 90);
+  mkLabel("preLabel small", "ON", 254, 64, 70);
+  mkLabel("preLabel small muted", "OFF", 254, 146, 70);
+
+  mkLabel("preLabel", "INPUT", 130, 24, 90);
+
+  mkLabel("preLabel", "OUTPUT", 130, 226, 90);
+  mkLabel("preLabel", "LOW EQ", 16, 244, 70);
+  mkLabel("preLabel", "HI EQ", 255, 244, 70);
+
+  const knobValue = (el)=>{
+    const v = document.createElement("div");
+    v.className = "preKnobValue";
+    v.textContent = "0";
+    el.appendChild(v);
+    return v;
+  };
+  const kbInVal = knobValue(kbIn);
+  const kbOutVal = knobValue(kbOut);
+  const kbLowVal = knobValue(kbLow);
+  const kbHighVal = knobValue(kbHigh);
+
   const setKnobSprite = (el, url, frames)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${frames*100}%`;
     el.dataset.frames = String(frames);
   };
   const setSwitchSprite = (el, url)=>{
-    el.style.backgroundImage = `url(${url})`;
-    el.style.backgroundRepeat = "no-repeat";
-    el.style.backgroundSize = `100% ${2*100}%`;
     el.dataset.frames = "2";
   };
-  setKnobSprite(kbIn,  "tukan/pre/Preamp.png", 101);
-  setKnobSprite(kbOut, "tukan/pre/PreampOut.png", 101);
-  setKnobSprite(kbLow, "tukan/pre/PreampShelv.png", 101);
-  setKnobSprite(kbHigh,"tukan/pre/PreampShelv.png", 101);
-  setSwitchSprite(swDist, "tukan/pre/switch.png");
-  setSwitchSprite(swPre,  "tukan/pre/switch.png");
+  setKnobSprite(kbIn,  "", 101);
+  setKnobSprite(kbOut, "", 101);
+  setKnobSprite(kbLow, "", 101);
+  setKnobSprite(kbHigh,"", 101);
+  setSwitchSprite(swDist, "");
+  setSwitchSprite(swPre,  "");
 
 // --- VU overlays (telemetry sliders) ---
 const vuInSlot = document.createElement("div");
@@ -2313,8 +2688,9 @@ skin.appendChild(vuOutSlot);
 // Clip LED under "OVER"
 const overLed = document.createElement("div");
 overLed.className = "preOverLed";
-overLed.style.left = "218px";
-overLed.style.top  = "262px";
+  // Slightly to the right so it aligns under the printed "OVER" like the reference.
+  overLed.style.left = "236px";
+  overLed.style.top  = "262px";
 skin.appendChild(overLed);
 
   // --- Dynamic mapping ---
@@ -2398,10 +2774,27 @@ const frames = parseInt(el.dataset.frames||"101",10);
     } };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);
+    el.addEventListener("dblclick", ()=>{
+      remap();
+      const pIdx = parseInt(el.dataset.idx,10);
+      const p = getP(pIdx);
+      if (!p) return;
+      const tgt = Number.isFinite(p.default) ? p.default
+        : Number.isFinite(p.def) ? p.def
+        : Number.isFinite(p.defval) ? p.defval
+        : 0.5;
+      bringPluginToFront(win);
+      suppressPoll(win, 700);
+      setParamNormalized(win, pIdx, tgt);
+      p.value = tgt;
+      try{ setDraggedParamValue(win, pIdx, tgt); }catch(_){ }
+      const frames = parseInt(el.dataset.frames||"101",10);
+      setSpriteFrame(el, frameFromNorm(tgt, frames, el.dataset.inv === "1"), frames);
+    });
   }
   bindKnob(kbIn); bindKnob(kbOut); bindKnob(kbLow); bindKnob(kbHigh);
 
-  function bindBoolSwitch(el){
+  const bindBoolSwitch = (el)=>{
     el.addEventListener("click", ()=>{
       remap();
       const pIdx = parseInt(el.dataset.idx,10);
@@ -2415,11 +2808,11 @@ const frames = parseInt(el.dataset.frames||"101",10);
             try{ setDraggedParamValue(win, pIdx, next); }catch(_){ }
 update();
     });
-  }
+  };
   bindBoolSwitch(swDist);
   bindBoolSwitch(swPre);
 
-  const fit = ()=>{
+  const fit_2763 = ()=>{
     const bodyEl = host.closest(".pluginWinBody");
     const ctrlEl = host.closest(".plugCtrl");
     const scope = ctrlEl || bodyEl || host.closest(".pluginParamList") || host;
@@ -2434,12 +2827,12 @@ update();
     skin.style.transform = `scale(${sc})`;
   };
   try{
-    const ro = new ResizeObserver(()=>fit());
+    const ro = new ResizeObserver(()=>fit_2763());
     const obs = host.closest(".pluginParamList") || host;
     ro.observe(obs);
     host._ro = ro;
   }catch(_){}
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_2763);
 
   const update = ()=>{
     remap();
@@ -2454,6 +2847,27 @@ update();
     if (pOut) setSpriteFrame(kbOut, frameFromNorm(pOut.value||0, 101, false), 101);
     if (pLow) setSpriteFrame(kbLow, frameFromNorm(pLow.value||0, 101, false), 101);
     if (pHigh) setSpriteFrame(kbHigh, frameFromNorm(pHigh.value||0, 101, false), 101);
+
+    const setKnobValue = (el, val, min, max, color)=>{
+      const pct = (max === min) ? 0 : Math.max(0, Math.min(1, (val - min) / (max - min)));
+      // For CSS ring fill (0..1). Actual sweep/offset are handled in CSS to match RM_AIR.
+      el.style.setProperty("--ring-pct", pct.toFixed(3));
+      if (color) el.style.setProperty("--ring-color", color);
+      return Math.round(val);
+    };
+    const readDb = (p, min, max)=>{
+      if (!p) return min;
+      if (p.raw != null && Number.isFinite(p.raw)) return p.raw;
+      return min + (Number(p.value||0)) * (max - min);
+    };
+    const inDb = readDb(pIn, 0, 30);
+    const outDb = readDb(pOut, 0, 30);
+    const lowDb = readDb(pLow, -20, 20);
+    const highDb = readDb(pHigh, -20, 20);
+    kbInVal.textContent = setKnobValue(kbIn, inDb, 0, 30, "rgba(255,120,120,0.9)") + "dB";
+    kbOutVal.textContent = setKnobValue(kbOut, outDb, 0, 30, "rgba(255,120,120,0.9)") + "dB";
+    kbLowVal.textContent = setKnobValue(kbLow, lowDb, -20, 20, "rgba(120,170,255,0.9)") + "dB";
+    kbHighVal.textContent = setKnobValue(kbHigh, highDb, -20, 20, "rgba(120,170,255,0.9)") + "dB";
     setSpriteFrame(swDist, (!!pDist && (pDist.value||0) >= 0.5) ? 1 : 0, 2);
     setSpriteFrame(swPre,  (!!pPre && (pPre.value||0) >= 0.5) ? 1 : 0, 2);
 
@@ -2545,7 +2959,7 @@ function buildRML2PanelControl(win, ctrl){
 
   // Auto-scale to always fit in the plugin window.
   const BASE_W = 560, BASE_H = 360;
-  const fit = ()=>{
+  const fit_2910 = ()=>{
     const bodyEl = stage.closest(".pluginWinBody");
     const ctrlEl = stage.closest(".plugCtrl");
     const scope = ctrlEl || bodyEl || stage.closest(".pluginParamList") || stage;
@@ -2559,12 +2973,12 @@ function buildRML2PanelControl(win, ctrl){
     skin.style.transform = `scale(${sc})`;
   };
   try{
-    const ro = new ResizeObserver(()=>fit());
+    const ro = new ResizeObserver(()=>fit_2910());
     const obs = stage.closest(".pluginParamList") || stage;
     ro.observe(obs);
     stage._ro = ro;
   }catch(_){ }
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_2910);
 
   const extra = ctrl.extra || {};
   const getP = (patterns)=> findParamByPatterns(win.params||[], patterns||[]);
@@ -2867,7 +3281,7 @@ function buildRMKickerL2PanelControl(win, ctrl){
   stage.appendChild(skin);
 
   const BASE_W = 680, BASE_H = 360;
-  const fit = ()=>{
+  const fit_3232 = ()=>{
     const bodyEl = stage.closest(".pluginWinBody");
     const ctrlEl = stage.closest(".plugCtrl");
     const scope = ctrlEl || bodyEl || stage.closest(".pluginParamList") || stage;
@@ -2881,12 +3295,12 @@ function buildRMKickerL2PanelControl(win, ctrl){
     skin.style.transform = `scale(${sc})`;
   };
   try{
-    const ro = new ResizeObserver(()=>fit());
+    const ro = new ResizeObserver(()=>fit_3232());
     const obs = stage.closest(".pluginParamList") || stage;
     ro.observe(obs);
     stage._ro = ro;
   }catch(_){}
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_3232);
 
   const ex = ctrl.extra || {};
   const getP = (patterns)=> findParamByPatterns(win.params||[], patterns||[]);
@@ -3584,7 +3998,7 @@ function buildRMDelayMachinePanelControl(win, ctrl){
   });
 
   // --- Fit scaling
-  const fit = ()=>{
+  const fit_3949 = ()=>{
     const parent = host.parentElement || host;
     const r = parent.getBoundingClientRect ? parent.getBoundingClientRect() : {width: DESIGN_W, height: DESIGN_H};
     const availW = Math.max(50, r.width || parent.clientWidth || DESIGN_W);
@@ -3595,10 +4009,10 @@ function buildRMDelayMachinePanelControl(win, ctrl){
   };
   let ro = null;
   try{
-    ro = new ResizeObserver(()=>{ requestAnimationFrame(fit); });
+    ro = new ResizeObserver(()=>{ requestAnimationFrame(fit_3949); });
     ro.observe(host.parentElement || host);
   }catch(_){}
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_3949);
 
   // --- Update loop
   function update(){
@@ -4935,7 +5349,7 @@ function buildRMDeesserPanelControl(win, ctrl){
 
   // Auto-scale
   const BASE_W = 640, BASE_H = 320;
-  const fit = ()=>{
+  const fit_5300 = ()=>{
     const bodyEl = stage.closest(".pluginWinBody");
     const ctrlEl = stage.closest(".plugCtrl");
     const scope = ctrlEl || bodyEl || stage.closest(".pluginParamList") || stage;
@@ -4949,12 +5363,12 @@ function buildRMDeesserPanelControl(win, ctrl){
     skin.style.transform = `scale(${sc})`;
   };
   try{
-    const ro = new ResizeObserver(()=>fit());
+    const ro = new ResizeObserver(()=>fit_5300());
     const obs = stage.closest(".pluginParamList") || stage;
     ro.observe(obs);
     stage._ro = ro;
   }catch(_){ }
-  requestAnimationFrame(fit);
+  requestAnimationFrame(fit_5300);
 
   const extra = ctrl.extra || {};
   const getP = (patterns)=> findParamByPatterns(win.params||[], patterns||[]);
@@ -7026,7 +7440,7 @@ function buildReaCompPanelControl(win, ctrl){
     const scope = container || stage.closest(".pluginWinBody");
     if (!scope) return;
 
-    const fit = ()=>{
+    const fit_7391 = ()=>{
       if (!ui.baseW || !ui.baseH){
         stage.style.transform = "scale(1)";
         stage.style.width = "auto";
@@ -7050,13 +7464,13 @@ function buildReaCompPanelControl(win, ctrl){
       stage.style.margin = "0 auto";
     };
 
-    ui.scaleFit = fit;
+    ui.scaleFit = fit_7391;
     try{
-      const ro = new ResizeObserver(()=>fit());
+      const ro = new ResizeObserver(()=>fit_7391());
       ro.observe(scope);
       ui.scaleObserver = ro;
     }catch(_){}
-    requestAnimationFrame(fit);
+    requestAnimationFrame(fit_7391);
   }
 
   function renderLayoutInto(win, layout, container){
