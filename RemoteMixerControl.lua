@@ -645,6 +645,15 @@ local function full_restart_replace()
   ext_set('FxReplaceEnabled', '1', true)
 end
 
+local function full_stop_all()
+  ext_set('FxPanelsStop', '1', false)
+  state.fxpanels_started = false
+  ext_set('FxReplaceEnabled', '0', true)
+  stop_bridge()
+  send_control('stop')
+  poll_status()
+end
+
 -- ---------- single instance / show on re-run ----------
 local function is_control_alive()
   return hb_alive(ext_get('ControlProcHB'))
@@ -784,6 +793,10 @@ local function draw_window()
       stop_bridge()
       send_control('stop')
       poll_status()
+    end
+    reaper.ImGui_SameLine(ctx)
+    if ui.button_secondary(ctx, 'Full stop (shutdown servers)', 1.0) then
+      full_stop_all()
     end
     reaper.ImGui_SameLine(ctx)
     if ui.button_secondary(ctx, 'Restart server', 1.0) then
