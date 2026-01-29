@@ -761,8 +761,9 @@ local function draw_window()
       local r, g, b, a = status_color(ok)
       reaper.ImGui_Text(ctx, label .. ':')
       reaper.ImGui_SameLine(ctx, 0, 8)
-      if r and reaper.ImGui_TextColored then
-        reaper.ImGui_TextColored(ctx, r, g, b, a, status)
+      if r and reaper.ImGui_TextColored and reaper.ImGui_ColorConvertDouble4ToU32 then
+        local col = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+        reaper.ImGui_TextColored(ctx, col, status)
       else
         reaper.ImGui_Text(ctx, status)
       end

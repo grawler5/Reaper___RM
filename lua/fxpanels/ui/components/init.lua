@@ -96,8 +96,9 @@ function components.text(ctx, text, style, scale)
     color = c.textMuted
   end
   local r, g, b, a = resolve_color(color)
-  if reaper.ImGui_TextColored then
-    reaper.ImGui_TextColored(ctx, r, g, b, a, text)
+  if reaper.ImGui_TextColored and reaper.ImGui_ColorConvertDouble4ToU32 then
+    local col = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+    reaper.ImGui_TextColored(ctx, col, text)
   else
     reaper.ImGui_Text(ctx, text)
   end
