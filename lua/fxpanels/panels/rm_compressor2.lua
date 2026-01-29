@@ -73,6 +73,36 @@ local function draw_param_hslider(ctx, track, fx, ui, scale, label, param, width
   end
 end
 
+local NOTE_LABELS = { '1/64t', '1/64', '1/32t', '1/32', '1/16t', '1/16', '1/8t', '1/8', '1/4t', '1/4', '1/2t', '1/2' }
+
+local function draw_release_web(ctx, track, fx, ui, scale, width, bpm_sync_on)
+  if not bpm_sync_on then
+    draw_param_hslider(ctx, track, fx, ui, scale, 'Release', P.release, width)
+    return
+  end
+
+  local n = #NOTE_LABELS
+  local v = params.get_norm(track, fx, P.release) or 0
+  local idx = math.floor(v * (n - 1) + 0.5)
+  if idx < 0 then idx = 0 end
+  if idx > n - 1 then idx = n - 1 end
+
+  if reaper.ImGui_SliderInt then
+    reaper.ImGui_PushItemWidth(ctx, (width or 260) * scale)
+    local changed, new_idx = reaper.ImGui_SliderInt(ctx, 'Release', idx, 0, n - 1, NOTE_LABELS[idx + 1])
+    reaper.ImGui_PopItemWidth(ctx)
+    if changed then
+      params.set_norm(track, fx, P.release, new_idx / (n - 1))
+    end
+    -- keep the right-side readout like other rows
+    reaper.ImGui_SameLine(ctx)
+    reaper.ImGui_Text(ctx, NOTE_LABELS[(changed and (new_idx + 1) or (idx + 1))])
+  else
+    -- Fallback: continuous slider with quantized steps
+    draw_param_hslider(ctx, track, fx, ui, scale, 'Release', P.release, width)
+  end
+end
+
 function panel.render(ctx, track, fx, ui, state)
   local scale = (state.ui_scale or state.scale or 1.0) * (panel.meta.scale_mult or 1.0)
 
@@ -246,7 +276,8 @@ function panel.render(ctx, track, fx, ui, state)
   with_group(function()
     draw_card('ENVELOPE', mid_w, card_h * 0.52, function(inner_w)
       draw_param_hslider(ctx, track, fx, ui, scale, 'Attack', P.attack, inner_w - 30 * scale)
-      draw_param_hslider(ctx, track, fx, ui, scale, 'Release', P.release, inner_w - 30 * scale)
+      local bpm_sync_on = params.get_norm(track, fx, P.bpm_sync) > 0.5
+      draw_release_web(ctx, track, fx, ui, scale, inner_w - 30 * scale, bpm_sync_on)
       draw_param_hslider(ctx, track, fx, ui, scale, 'Ratio', P.ratio, inner_w - 30 * scale)
       draw_param_hslider(ctx, track, fx, ui, scale, 'Knee', P.knee, inner_w - 30 * scale)
     end)

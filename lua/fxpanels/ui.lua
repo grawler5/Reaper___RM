@@ -381,6 +381,20 @@ function ui.section_title(ctx, text)
   reaper.ImGui_Text(ctx, text)
 end
 
+function ui.big_value(ctx, text, scale)
+  -- Simple "LED/value" style: bigger font via temporary font scale when available.
+  scale = scale or 1.0
+  local old = nil
+  if reaper.ImGui_GetWindowFontScale and reaper.ImGui_SetWindowFontScale then
+    old = reaper.ImGui_GetWindowFontScale(ctx)
+    pcall(reaper.ImGui_SetWindowFontScale, ctx, math.max(1.0, 1.15 * scale))
+  end
+  reaper.ImGui_Text(ctx, tostring(text or ''))
+  if old and reaper.ImGui_SetWindowFontScale then
+    pcall(reaper.ImGui_SetWindowFontScale, ctx, old)
+  end
+end
+
 function ui.caption_muted(ctx, text)
   local c = theme.colors()
   local scope = scoped_style(ctx)

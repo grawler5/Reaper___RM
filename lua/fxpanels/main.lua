@@ -230,21 +230,29 @@ local function header_row(ctx, ws, scale)
   local w_insp = 92 * scale
   local w_on = 52 * scale
   local w_x = 32 * scale
+  local right_w = w_insp + gap + w_on + gap + w_x
 
-  -- Header background
-  if reaper.ImGui_GetWindowDrawList and reaper.ImGui_DrawList_AddRectFilled then
+  -- Reserve a fixed topbar height (so the divider + layout are consistent across panels).
+  local x0, y0 = compat.get_cursor_screen_pos(ctx)
+  local avail_w = 0
+  if reaper.ImGui_GetContentRegionAvail then
+    avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
+  end
+  local bar_h = m.topbar_h
+
+  -- Background
+  if reaper.ImGui_GetWindowDrawList and reaper.ImGui_DrawList_AddRectFilled and reaper.ImGui_ColorConvertDouble4ToU32 then
     local dl = reaper.ImGui_GetWindowDrawList(ctx)
-    local x, y = reaper.ImGui_GetCursorScreenPos(ctx)
-    local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx)) or 0
-    local h = m.topbar_h * 0.75
-    local col = reaper.ImGui_ColorConvertDouble4ToU32 and reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.panel_alt)) or nil
+    local col = reaper.ImGui_ColorConvertDouble4ToU32(theme.rgba(c.panel_alt))
     if dl and col and avail_w > 1 then
-      pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x, y, x + avail_w, y + h, col, 10 * scale)
+      pcall(reaper.ImGui_DrawList_AddRectFilled, dl, x0, y0, x0 + avail_w, y0 + bar_h, col, m.window_round * 0.75)
     end
   end
 
-  -- Header content (single line): title on the left, buttons pinned to the right.
-  local right_w = w_insp + gap + w_on + gap + w_x
+  -- Content (vertically centered inside the topbar)
+  local content_y = y0 + math.max(0, (bar_h - btn_h) * 0.5)
+  compat.set_cursor_screen_pos(ctx, x0, content_y)
+
   reaper.ImGui_PushStyleVar(ctx, E(reaper.ImGui_StyleVar_FramePadding), m.control_pad_x, (btn_h - m.control_font) * 0.5)
 
   reaper.ImGui_AlignTextToFramePadding(ctx)
@@ -252,7 +260,7 @@ local function header_row(ctx, ws, scale)
   reaper.ImGui_Text(ctx, tostring(track_name) .. ' • ' .. tostring(fx_name))
   pcall(reaper.ImGui_PopStyleColor, ctx)
 
-  -- Buttons
+  -- Buttons pinned to the right (NO Refresh button; match Web UI)
   reaper.ImGui_SameLine(ctx, 0, 0)
   _right_align_from_window(ctx, right_w)
 
@@ -290,7 +298,6 @@ local function header_row(ctx, ws, scale)
 
   reaper.ImGui_SameLine(ctx, 0, gap)
 
-  -- Close button: neutral grey like Web UI (not red).
   ui.push_color(ctx, reaper.ImGui_Col_Button, theme.rgba(c.panel))
   ui.push_color(ctx, reaper.ImGui_Col_ButtonHovered, theme.rgba(c.slot))
   ui.push_color(ctx, reaper.ImGui_Col_ButtonActive, theme.rgba(c.panel_alt))
@@ -302,7 +309,13 @@ local function header_row(ctx, ws, scale)
 
   pcall(reaper.ImGui_PopStyleVar, ctx)
 
-  reaper.ImGui_Dummy(ctx, 0, 6 * scale)
+  -- Move cursor to the end of the reserved topbar region.
+  compat.set_cursor_screen_pos(ctx, x0, y0 + bar_h)
+
+  -- Divider (between topbar and presets)
+  reaper.ImGui_Dummy(ctx, 0, m.item_space_y * 0.5)
+  reaper.ImGui_Separator(ctx)
+  reaper.ImGui_Dummy(ctx, 0, m.item_space_y * 0.25)
 end
 
 
