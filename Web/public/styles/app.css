@@ -3590,9 +3590,8 @@ body.phoneLandscape .panBox{ margin-top:2px !important; }
   opacity:0.55;
 }
 .tukanSkin .tkKnob.ticked.arc::before{
-  mask:
-    conic-gradient(from 210deg, #000 0deg 240deg, transparent 240deg 360deg),
-    radial-gradient(circle, transparent 62%, #000 63%);
+  mask: radial-gradient(circle, transparent 66%, #000 67%);
+  -webkit-mask: radial-gradient(circle, transparent 66%, #000 67%);
 }
 .tukanSkin .tkKnob::after{
   content: "";
@@ -4259,6 +4258,7 @@ background: linear-gradient(180deg,
 .preKnob{
   --arc-start: 210deg;
   --arc-sweep: 300deg;
+  position:relative;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -4289,9 +4289,9 @@ background: linear-gradient(180deg,
       rgba(255,255,255,0.10) calc(var(--ring-pct, 0) * var(--arc-sweep, 300deg)) var(--arc-sweep, 300deg),
       transparent var(--arc-sweep, 300deg) 360deg
     );
-  mask:
-    conic-gradient(from var(--arc-start, 210deg), #000 0deg var(--arc-sweep, 300deg), transparent var(--arc-sweep, 300deg) 360deg),
-    radial-gradient(circle, transparent 66%, #000 67%);
+  /* Keep only the outer ring (fix: avoid filling the whole knob face). */
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px));
   opacity:0.92;
 }
 .preKnob .preKnobValue{
@@ -5388,6 +5388,16 @@ body.light:not(.noTrackFrames) .strip.folderChild{
 .tkDialScale.la.inner text.label{
   font-size: 12px;
   fill: rgba(255,255,255,0.78);
+}
+.tkDialScale.la.outer text.label{
+  font-size: 12px;
+  fill: rgba(0,0,0,0.72);
+  stroke: rgba(255,255,255,0.22);
+  stroke-width: 2px;
+}
+.tkDialScale.la.outer circle.dot{
+  fill: rgba(0,0,0,0.38);
+  opacity: 0.90;
 }
 .tkDialScale.timing circle.dot{
   fill: rgba(255,255,255,0.58);

@@ -1633,22 +1633,33 @@ function formatParam(p){
   mkLabel("laLabel", "GAIN", 168, 208, 70);
   mkLabel("laLabel", "PEAK REDUCTION", 520, 208, 160);
 
-  // Dial markings inside the knob faces (reference style: numbers + dots, no outer spokes).
-  const addInnerDialScale = (knobEl, maxVal=100, majorStepVal=10, minorStepVal=5)=>{
+    // Dial markings around the knobs (reference style: numbers + dots between numbers; no spokes).
+  const addOuterDialScale = (knobEl, maxVal=100, majorStepVal=10, minorStepVal=5)=>{
     const svgns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgns, "svg");
-    svg.setAttribute("viewBox", "0 0 100 100");
-    svg.classList.add("tkDialScale", "la", "inner");
-    svg.style.position = "absolute";
-    svg.style.inset = "0";
-    svg.style.width = "100%";
-    svg.style.height = "100%";
-    svg.style.pointerEvents = "none";
-    knobEl.appendChild(svg);
 
-    const mid = 50;
-    const rDot  = 44;
-    const rText = 34;
+    const x = parseFloat(knobEl.style.left||"0");
+    const y = parseFloat(knobEl.style.top||"0");
+    const w = parseFloat(knobEl.style.width||"0");
+    const h = parseFloat(knobEl.style.height||"0");
+    const cx = x + w/2;
+    const cy = y + h/2;
+
+    const boxSize = Math.max(w,h) * 1.55; // tighter to knob (reference)
+    svg.setAttribute("viewBox", `0 0 ${boxSize} ${boxSize}`);
+    svg.classList.add("tkDialScale", "la", "outer");
+    svg.style.position = "absolute";
+    svg.style.pointerEvents = "none";
+    svg.style.left = (cx - boxSize/2) + "px";
+    svg.style.top  = (cy - boxSize/2) + "px";
+    svg.style.width = boxSize + "px";
+    svg.style.height = boxSize + "px";
+    skin.appendChild(svg);
+
+    const mid = boxSize/2;
+    const rDot  = boxSize*0.40;
+    const rText = boxSize*0.45;
+
     const startDeg = 240;
     const endDeg = 120;
     const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
@@ -1668,7 +1679,7 @@ function formatParam(p){
         const c = document.createElementNS(svgns, "circle");
         c.setAttribute("cx", xDot.toFixed(2));
         c.setAttribute("cy", yDot.toFixed(2));
-        c.setAttribute("r", "1.4");
+        c.setAttribute("r", (boxSize*0.010).toFixed(2));
         c.setAttribute("class", "dot");
         svg.appendChild(c);
       }else{
@@ -1685,9 +1696,8 @@ function formatParam(p){
       }
     }
   };
-  addInnerDialScale(kbGain, 100, 10, 5);
-  addInnerDialScale(kbPR,   100, 10, 5);
-
+  addOuterDialScale(kbGain, 100, 10, 5);
+  addOuterDialScale(kbPR,   100, 10, 5);
 
   const addVuScale = (face)=>{
     const scale = document.createElement("div");
@@ -2144,6 +2154,8 @@ function buildNC76PanelControl(win, ctrl){
     const svg = document.createElementNS(svgns, "svg");
     svg.setAttribute("viewBox", `0 0 ${boxSize} ${boxSize}`);
     svg.classList.add("tkDialScale", "nc");
+    svg.style.position = "absolute";
+    svg.style.pointerEvents = "none";
     svg.style.left = (cx - boxSize/2) + "px";
     svg.style.top  = (cy - boxSize/2) + "px";
     svg.style.width = boxSize + "px";
@@ -2151,8 +2163,8 @@ function buildNC76PanelControl(win, ctrl){
     skin.appendChild(svg);
 
     const mid = boxSize/2;
-    const rDot  = boxSize*0.42;
-    const rText = boxSize*0.46;
+    const rDot  = boxSize*0.39;
+    const rText = boxSize*0.44;
 
     const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
     const sweep = endAdj - startDeg;
@@ -2190,8 +2202,8 @@ function buildNC76PanelControl(win, ctrl){
   };
 
   // Arc goes over the top: left-bottom (8 o'clock) -> right-bottom (4 o'clock).
-  addDialScale(130, 110, 190, 240, 120, 48, 6);
-  addDialScale(320, 110, 190, 240, 120, 48, 6);
+  addDialScale(130, 110, 160, 240, 120, 48, 6);
+  addDialScale(320, 110, 160, 240, 120, 48, 6);
 
 
   // Timing knobs: add intermediate dots between SLOW and FAST (no spokes from center).
@@ -2200,6 +2212,8 @@ function buildNC76PanelControl(win, ctrl){
     const svg = document.createElementNS(svgns, "svg");
     svg.setAttribute("viewBox", `0 0 ${boxSize} ${boxSize}`);
     svg.classList.add("tkDialScale", "timing");
+    svg.style.position = "absolute";
+    svg.style.pointerEvents = "none";
     svg.style.left = (cx - boxSize/2) + "px";
     svg.style.top  = (cy - boxSize/2) + "px";
     svg.style.width = boxSize + "px";
@@ -2207,7 +2221,7 @@ function buildNC76PanelControl(win, ctrl){
     skin.appendChild(svg);
 
     const mid = boxSize/2;
-    const rDot = boxSize*0.44;
+    const rDot = boxSize*0.40;
     const endAdj = (endDeg < startDeg) ? (endDeg + 360) : endDeg;
     const sweep = endAdj - startDeg;
 
@@ -2223,8 +2237,8 @@ function buildNC76PanelControl(win, ctrl){
       svg.appendChild(c);
     }
   };
-  addTimingDots(480, 73, 78, 240, 120, 5);
-  addTimingDots(480, 153, 78, 240, 120, 5);
+  addTimingDots(480, 73, 70, 240, 120, 5);
+  addTimingDots(480, 153, 70, 240, 120, 5);
 
 
   const addVuScale = (face)=>{
