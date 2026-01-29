@@ -104,7 +104,7 @@ local function draw_knob(ctx, draw_list, x, y, size, scale, metrics, colors, val
   local arc_r = radius - metrics.arcPadding * scale
   if reaper.ImGui_DrawList_PathArcTo then
     reaper.ImGui_DrawList_PathArcTo(draw_list, cx, cy, arc_r, ang_min, ang)
-    reaper.ImGui_DrawList_PathStroke(draw_list, rgba_pack(colors.arc), false, metrics.arcWidth * scale)
+    reaper.ImGui_DrawList_PathStroke(draw_list, rgba_pack(colors.arc), 0, metrics.arcWidth * scale)
   end
 
   local px = cx + math.cos(ang) * (inner_r * 0.7)

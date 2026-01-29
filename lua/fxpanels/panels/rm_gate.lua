@@ -1,5 +1,6 @@
 local params = require('fxpanels.params')
 local compat = require('fxpanels.compat')
+local theme = require('fxpanels.theme')
 
 -- RM_Gate - 1:1-inspired layout from Web UI (rmGatePanel).
 
@@ -24,6 +25,31 @@ local function rect_multi(dl, x1, y1, x2, y2, c1, c2, c3, c4)
   end
 end
 
+local function pack(r, g, b, a)
+  if reaper.ImGui_ColorConvertDouble4ToU32 then
+    return reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+  end
+  return r, g, b, a
+end
+
+local function rgba(token)
+  if type(token) == 'string' then
+    return theme.rgba(token)
+  end
+  if type(token) == 'table' then
+    local r, g, b, a = token[1], token[2], token[3], token[4]
+    if r > 1 or g > 1 or b > 1 then
+      r, g, b = r / 255, g / 255, b / 255
+    end
+    return r or 0, g or 0, b or 0, a or 1
+  end
+  return 0, 0, 0, 1
+end
+
+local function rgba_pack(token)
+  return pack(rgba(token))
+end
+
 local function knob(ctx, track, fx, ui, scale, label, idx)
   if not idx then return end
   local v = clamp01(params.get_norm(track, fx, idx))
@@ -42,6 +68,9 @@ end
 
 function panel.render(ctx, track, fx, ui, state)
   local scale = (state.ui_scale or state.scale or 1.0) * (panel.meta.scale_mult or 1.0)
+  local tokens = theme.tokens().panels.rmGate
+  local metrics = tokens.metrics
+  local colors = tokens.colors
 
   local map = params.build_map(track, fx, {
     threshold = { patterns = { 'threshold', 'thresh' }, default = 0 },
@@ -55,8 +84,8 @@ function panel.render(ctx, track, fx, ui, state)
   local dl = reaper.ImGui_GetWindowDrawList and reaper.ImGui_GetWindowDrawList(ctx) or nil
   local has_draw = compat.has_drawlist() and dl ~= nil
   local avail_w = select(1, reaper.ImGui_GetContentRegionAvail(ctx))
-  local panel_w = math.min(420 * scale, avail_w)
-  local panel_h = 360 * scale
+  local panel_w = math.min(metrics.maxW * scale, avail_w)
+  local panel_h = math.max(metrics.minH * scale, 360 * scale)
 
   if avail_w > panel_w + 2 then
     reaper.ImGui_Dummy(ctx, (avail_w - panel_w) * 0.5, 0)
@@ -65,11 +94,11 @@ function panel.render(ctx, track, fx, ui, state)
 
   local x0, y0 = compat.get_cursor_screen_pos(ctx)
   if has_draw then
-    local bg_top = reaper.ImGui_ColorConvertDouble4ToU32(0.23, 0.25, 0.28, 1.0)
-    local bg_bot = reaper.ImGui_ColorConvertDouble4ToU32(0.14, 0.15, 0.17, 1.0)
-    local border = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.6)
-    rect_multi(dl, x0, y0, x0 + panel_w, y0 + panel_h, bg_top, bg_top, bg_bot, bg_bot)
-    reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, border, 20 * scale, 0, 1.0)
+    rect_multi(dl, x0, y0, x0 + panel_w, y0 + panel_h,
+      rgba_pack(colors.panelTop), rgba_pack(colors.panelTop), rgba_pack(colors.panelBottom), rgba_pack(colors.panelBottom))
+    reaper.ImGui_DrawList_AddRect(dl, x0, y0, x0 + panel_w, y0 + panel_h, rgba_pack(colors.panelBorder), metrics.radius * scale, 0, 1.0)
+    reaper.ImGui_DrawList_AddRect(dl, x0 + 1 * scale, y0 + 1 * scale, x0 + panel_w - 1 * scale, y0 + panel_h - 1 * scale,
+      rgba_pack(colors.panelInset), metrics.radius * scale - 1 * scale, 0, 1.0)
   end
 
   if reaper.ImGui_InvisibleButton then
@@ -78,10 +107,10 @@ function panel.render(ctx, track, fx, ui, state)
     reaper.ImGui_Dummy(ctx, panel_w, panel_h)
   end
 
-  local meter_w = 86 * scale
-  local meter_h = 260 * scale
+  local meter_w = metrics.meterW * scale
+  local meter_h = metrics.meterH * scale
   local meter_x = x0 + (panel_w - meter_w) * 0.5
-  local meter_y = y0 + 24 * scale
+  local meter_y = y0 + metrics.meterTop * scale
 
   local thresh = map.threshold ~= nil and clamp01(params.get_norm(track, fx, map.threshold)) or 0.0
   local in_pk = map.in_peak ~= nil and clamp01(params.get_norm(track, fx, map.in_peak)) or 0.0
@@ -89,20 +118,19 @@ function panel.render(ctx, track, fx, ui, state)
   local readout = map.threshold ~= nil and params.get_formatted(track, fx, map.threshold) or '—'
 
   if has_draw then
-    local meter_bg = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.28)
-    local meter_bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.55)
-    local divider = reaper.ImGui_ColorConvertDouble4ToU32(0.12, 0.12, 0.12, 0.8)
-    local fill_in = reaper.ImGui_ColorConvertDouble4ToU32(0.30, 1.0, 0.48, 0.95)
-    local fill_in_hot = reaper.ImGui_ColorConvertDouble4ToU32(1.0, 0.52, 0.29, 0.95)
-    local fill_act = reaper.ImGui_ColorConvertDouble4ToU32(1.0, 0.15, 0.15, 0.6)
+    local meter_bg = rgba_pack(colors.meterBg)
+    local meter_bd = rgba_pack(colors.meterBorder)
 
     local left_x = meter_x
     local right_x = meter_x + meter_w * 0.5
-    local mid_x = meter_x + meter_w * 0.5 - 2 * scale
+    local mid_x = meter_x + meter_w * 0.5 - (metrics.meterDivider * 0.5) * scale
 
-    reaper.ImGui_DrawList_AddRectFilled(dl, meter_x, meter_y, meter_x + meter_w, meter_y + meter_h, meter_bg, 20 * scale)
-    reaper.ImGui_DrawList_AddRect(dl, meter_x, meter_y, meter_x + meter_w, meter_y + meter_h, meter_bd, 20 * scale, 0, 1.0)
-    reaper.ImGui_DrawList_AddRectFilled(dl, mid_x, meter_y, mid_x + 4 * scale, meter_y + meter_h, divider, 0)
+    reaper.ImGui_DrawList_AddRectFilled(dl, meter_x, meter_y, meter_x + meter_w, meter_y + meter_h, meter_bg, metrics.radius * scale)
+    reaper.ImGui_DrawList_AddRect(dl, meter_x, meter_y, meter_x + meter_w, meter_y + meter_h, meter_bd, metrics.radius * scale, 0, 1.0)
+    rect_multi(dl, mid_x, meter_y, mid_x + metrics.meterDivider * scale, meter_y + meter_h,
+      rgba_pack(colors.dividerTop), rgba_pack(colors.dividerTop), rgba_pack(colors.dividerBottom), rgba_pack(colors.dividerBottom))
+    reaper.ImGui_DrawList_AddRect(dl, mid_x, meter_y, mid_x + metrics.meterDivider * scale, meter_y + meter_h,
+      rgba_pack(colors.dividerInset), 0, 0, 1.0)
 
     local in_h = meter_h * in_pk
     rect_multi(
@@ -111,48 +139,51 @@ function panel.render(ctx, track, fx, ui, state)
       meter_y + meter_h - in_h,
       right_x - 2 * scale,
       meter_y + meter_h,
-      fill_in,
-      fill_in,
-      fill_in_hot,
-      fill_in_hot
+      rgba_pack(colors.fillInTop),
+      rgba_pack(colors.fillInTop),
+      rgba_pack(colors.fillInPeak),
+      rgba_pack(colors.fillInPeak)
     )
 
     local close_h = meter_h * close
-    reaper.ImGui_DrawList_AddRectFilled(
+    rect_multi(
       dl,
       right_x + 2 * scale,
       meter_y,
       meter_x + meter_w - 1 * scale,
       meter_y + close_h,
-      fill_act
+      rgba_pack(colors.fillActTop),
+      rgba_pack(colors.fillActTop),
+      rgba_pack(colors.fillActBottom),
+      rgba_pack(colors.fillActBottom)
     )
 
     local thumb_y = meter_y + (1.0 - thresh) * meter_h
-    local thumb_w = 128 * scale
-    local thumb_h = 44 * scale
+    local thumb_w = metrics.thumbW * scale
+    local thumb_h = metrics.thumbH * scale
     local thumb_x = meter_x + (meter_w - thumb_w) * 0.5
-    local thumb_bg = reaper.ImGui_ColorConvertDouble4ToU32(0.14, 0.16, 0.18, 1.0)
-    local thumb_bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.75)
-    reaper.ImGui_DrawList_AddRectFilled(dl, thumb_x, thumb_y - thumb_h * 0.5, thumb_x + thumb_w, thumb_y + thumb_h * 0.5, thumb_bg, 10 * scale)
-    reaper.ImGui_DrawList_AddRect(dl, thumb_x, thumb_y - thumb_h * 0.5, thumb_x + thumb_w, thumb_y + thumb_h * 0.5, thumb_bd, 10 * scale, 0, 1.0)
+    reaper.ImGui_DrawList_AddRectFilled(dl, thumb_x, thumb_y - thumb_h * 0.5, thumb_x + thumb_w, thumb_y + thumb_h * 0.5,
+      rgba_pack(colors.thumbTop), 10 * scale)
+    reaper.ImGui_DrawList_AddRect(dl, thumb_x, thumb_y - thumb_h * 0.5, thumb_x + thumb_w, thumb_y + thumb_h * 0.5,
+      rgba_pack(colors.thumbBorder), 10 * scale, 0, 1.0)
+    reaper.ImGui_DrawList_AddRect(dl, thumb_x + 1 * scale, thumb_y - thumb_h * 0.5 + 1 * scale, thumb_x + thumb_w - 1 * scale, thumb_y + thumb_h * 0.5 - 1 * scale,
+      rgba_pack(colors.thumbInset), 10 * scale - 1 * scale, 0, 1.0)
 
-    local title_col = reaper.ImGui_ColorConvertDouble4ToU32(1, 1, 1, 0.18)
-    reaper.ImGui_DrawList_AddText(dl, x0 + 14 * scale, y0 + panel_h - 52 * scale, title_col, 'Gate')
+    reaper.ImGui_DrawList_AddText(dl, x0 + metrics.titleOffsetX * scale, y0 + panel_h - metrics.titleOffsetY * scale, rgba_pack(colors.title), 'Gate')
 
-    local read_w = 110 * scale
-    local read_h = 32 * scale
+    local read_w = metrics.readoutW * scale
+    local read_h = metrics.readoutH * scale
     local read_x = x0 + (panel_w - read_w) * 0.5
-    local read_y = meter_y + meter_h + 10 * scale
-    local read_bg = reaper.ImGui_ColorConvertDouble4ToU32(0.05, 0.05, 0.06, 1.0)
-    local read_bd = reaper.ImGui_ColorConvertDouble4ToU32(0, 0, 0, 0.65)
-    local read_tx = reaper.ImGui_ColorConvertDouble4ToU32(1.0, 0.7, 0.1, 1.0)
-    reaper.ImGui_DrawList_AddRectFilled(dl, read_x, read_y, read_x + read_w, read_y + read_h, read_bg, 10 * scale)
-    reaper.ImGui_DrawList_AddRect(dl, read_x, read_y, read_x + read_w, read_y + read_h, read_bd, 10 * scale, 0, 1.0)
+    local read_y = meter_y + meter_h + metrics.readoutGap * scale
+    reaper.ImGui_DrawList_AddRectFilled(dl, read_x, read_y, read_x + read_w, read_y + read_h, rgba_pack(colors.readoutBg), 10 * scale)
+    reaper.ImGui_DrawList_AddRect(dl, read_x, read_y, read_x + read_w, read_y + read_h, rgba_pack(colors.readoutBorder), 10 * scale, 0, 1.0)
+    reaper.ImGui_DrawList_AddRect(dl, read_x + 1 * scale, read_y + 1 * scale, read_x + read_w - 1 * scale, read_y + read_h - 1 * scale,
+      rgba_pack(colors.readoutInset), 10 * scale - 1 * scale, 0, 1.0)
     if reaper.ImGui_CalcTextSize then
       local tw, th = reaper.ImGui_CalcTextSize(ctx, readout or '')
-      reaper.ImGui_DrawList_AddText(dl, read_x + (read_w - (tw or 0)) * 0.5, read_y + (read_h - (th or 0)) * 0.5, read_tx, readout or '')
+      reaper.ImGui_DrawList_AddText(dl, read_x + (read_w - (tw or 0)) * 0.5, read_y + (read_h - (th or 0)) * 0.5, rgba_pack(colors.readoutText), readout or '')
     else
-      reaper.ImGui_DrawList_AddText(dl, read_x + 8 * scale, read_y + 8 * scale, read_tx, readout or '')
+      reaper.ImGui_DrawList_AddText(dl, read_x + 8 * scale, read_y + 8 * scale, rgba_pack(colors.readoutText), readout or '')
     end
   end
 
