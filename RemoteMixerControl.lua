@@ -613,17 +613,6 @@ local function stop_bridge()
   ext_set('BridgeStop', '1', false)
 end
 
-local function full_restart_replace()
-  ext_set('FxPanelsStop', '1', false)
-  state.fxpanels_started = false
-  stop_bridge()
-  send_control('restart')
-  poll_status()
-  start_bridge()
-  ensure_fxpanels_started()
-  ext_set('FxReplaceEnabled', '1', true)
-end
-
 -- ---------- fx panels ----------
 local function ensure_fxpanels_started()
   if state.fxpanels_started then return end
@@ -643,6 +632,17 @@ local function ensure_fxpanels_started()
   else
     state.error = 'Failed to load fxpanels.main'
   end
+end
+
+local function full_restart_replace()
+  ext_set('FxPanelsStop', '1', false)
+  state.fxpanels_started = false
+  stop_bridge()
+  send_control('restart')
+  poll_status()
+  start_bridge()
+  ensure_fxpanels_started()
+  ext_set('FxReplaceEnabled', '1', true)
 end
 
 -- ---------- single instance / show on re-run ----------
