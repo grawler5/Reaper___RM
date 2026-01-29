@@ -1,5 +1,5 @@
-local compat = require('fxpanels.compat')
 local theme = require('fxpanels.theme')
+local controls = require('fxpanels.ui.components.controls')
 
 local components = {}
 
@@ -122,5 +122,7 @@ function components.layout_column(ctx, items, gap)
     item()
   end
 end
+
+components.controls = controls
 
 return components

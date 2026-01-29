@@ -2,7 +2,6 @@
 -- Run inside REAPER with ReaImGui + js_ReaScriptAPI installed.
 
 local registry = require('fxpanels.registry')
-local ui_main = require('fxpanels.main')
 
 local function has_js_api()
   return reaper.JS_Window_Find ~= nil and reaper.JS_Window_ScreenShot ~= nil
