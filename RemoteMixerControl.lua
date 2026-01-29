@@ -738,15 +738,38 @@ local function draw_window()
     end
 
     local st = state.status or {}
-    reaper.ImGui_Text(ctx, 'Server: ' .. ((st.running and 'running') or 'stopped'))
-    ui.caption_muted(ctx, 'URL: ' .. url_for(st))
-
     local bridge_conn = tostring(ext_get('BridgeConnected')) == '1'
     local bridge_err = tostring(ext_get('BridgeLastError') or '')
-    reaper.ImGui_Text(ctx, 'Bridge: ' .. (bridge_conn and 'connected' or 'disconnected'))
-    if (not bridge_conn) and bridge_err ~= '' then
-      reaper.ImGui_TextWrapped(ctx, 'Bridge error: ' .. bridge_err)
+    local function status_color(ok)
+      if theme and theme.colors and theme.rgba then
+        local c = theme.colors()
+        return theme.rgba(ok and c.success or c.danger)
+      end
+      return nil
     end
+    local function status_line(label, ok, detail)
+      local status = ok and 'ONLINE' or 'OFFLINE'
+      local r, g, b, a = status_color(ok)
+      reaper.ImGui_Text(ctx, label .. ':')
+      reaper.ImGui_SameLine(ctx, 0, 8)
+      if r and reaper.ImGui_TextColored then
+        reaper.ImGui_TextColored(ctx, r, g, b, a, status)
+      else
+        reaper.ImGui_Text(ctx, status)
+      end
+      if detail and detail ~= '' then
+        reaper.ImGui_SameLine(ctx, 0, 8)
+        ui.caption_muted(ctx, detail)
+      end
+    end
+
+    local status_opened, status_child, status_scope = ui.card_begin(ctx, '##rm_status_card', 1.0, 0, 0)
+    if status_opened then
+      ui.section_title(ctx, 'Status')
+      status_line('Server', st.running, 'URL: ' .. url_for(st))
+      status_line('Bridge', bridge_conn, bridge_conn and 'Connected' or (bridge_err ~= '' and ('Error: ' .. bridge_err) or 'Disconnected'))
+    end
+    ui.card_end(ctx, status_child, status_scope)
 
     if ui.button_primary(ctx, 'Start all', 1.0) then
       spawn_daemon()
