@@ -339,11 +339,34 @@ local function draw_scenes_window()
     state.scenes_window = false
     return
   end
+  local text_sc = 0
+  if theme and theme.colors and theme.rgba and reaper.ImGui_PushStyleColor then
+    local c = theme.colors()
+    local r, g, b, a = theme.rgba(c.text)
+    r = math.min(1, r + 0.08)
+    g = math.min(1, g + 0.08)
+    b = math.min(1, b + 0.08)
+    local col_id = reaper.ImGui_Col_Text
+    if type(col_id) == 'function' then col_id = col_id() end
+    if reaper.ImGui_ColorConvertDouble4ToU32 then
+      local packed = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, packed) then
+        text_sc = 1
+      end
+    else
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, r, g, b, a) then
+        text_sc = 1
+      end
+    end
+  end
   if open == false then
     state.scenes_window = false
   end
   if visible then
     draw_scenes_manager()
+  end
+  if text_sc > 0 then
+    pcall(reaper.ImGui_PopStyleColor, ctx, text_sc)
   end
   pcall(reaper.ImGui_End, ctx)
 end
@@ -717,9 +740,30 @@ local function draw_window()
   reaper.ImGui_SetNextWindowSize(ctx, 620, 380, reaper.ImGui_Cond_Appearing())
 
   local sv, sc = theme.push(ctx, 1.0)
+  local text_sc = 0
+  if theme and theme.colors and theme.rgba and reaper.ImGui_PushStyleColor then
+    local c = theme.colors()
+    local r, g, b, a = theme.rgba(c.text)
+    r = math.min(1, r + 0.08)
+    g = math.min(1, g + 0.08)
+    b = math.min(1, b + 0.08)
+    local col_id = reaper.ImGui_Col_Text
+    if type(col_id) == 'function' then col_id = col_id() end
+    if reaper.ImGui_ColorConvertDouble4ToU32 then
+      local packed = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, packed) then
+        text_sc = 1
+      end
+    else
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, r, g, b, a) then
+        text_sc = 1
+      end
+    end
+  end
   local began_ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'ReaperRM Control', true)
   if not began_ok then
     state.ui_visible = false
+    if text_sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, text_sc) end
     theme.pop(ctx, sv, sc)
     return
   end
@@ -852,6 +896,7 @@ local function draw_window()
   end
 
   pcall(reaper.ImGui_End, ctx)
+  if text_sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, text_sc) end
   draw_scenes_window()
   theme.pop(ctx, sv, sc)
 end
