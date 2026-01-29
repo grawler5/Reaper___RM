@@ -22,7 +22,7 @@ local ui = nil
 local state = {
   ui_visible = true,
   show_diag = false,
-  show_scenes = false,
+  scenes_window = false,
   autostart_done = false,
   last_poll = 0,
   last_log_poll = 0,
@@ -183,18 +183,15 @@ local function draw_scenes_manager()
   local data = state.scenes_data
   local cur = scenes_current(data)
 
-  local card_open, card_child, card_scope = ui.card_begin(ctx, 'sc_card', 1.0, 0, 0)
-  if card_open then
-    ui.section_title(ctx, 'Scenes manager (project)')
-    local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
-    reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, 'Save##sc', 1.0) then scenes_save(data) end
-    reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, 'Reload##sc', 1.0) then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
-    ui.toolbar_end(ctx, toolbar_scope)
+  ui.section_title(ctx, 'Scenes manager (project)')
+  local toolbar_scope = ui.toolbar_begin(ctx, 1.0)
+  reaper.ImGui_SameLine(ctx, 0, 8)
+  if ui.button_secondary(ctx, 'Save##sc', 1.0) then scenes_save(data) end
+  reaper.ImGui_SameLine(ctx, 0, 8)
+  if ui.button_secondary(ctx, 'Reload##sc', 1.0) then state.scenes_data = scenes_load(); data = state.scenes_data; cur = scenes_current(data) end
+  ui.toolbar_end(ctx, toolbar_scope)
 
-    reaper.ImGui_Separator(ctx)
-  end
+  reaper.ImGui_Separator(ctx)
 
   -- Scene selector
   local cur_name = cur and cur.name or 'main'
@@ -241,10 +238,7 @@ local function draw_scenes_manager()
     end
   end
 
-  if not cur then
-    ui.card_end(ctx, card_child, card_scope)
-    return
-  end
+  if not cur then return end
 
   -- Master track for scene
   local tracks = get_tracks_flat()
@@ -335,7 +329,49 @@ local function draw_scenes_manager()
       reaper.ImGui_EndChild(ctx)
     end
   end
-  ui.card_end(ctx, card_child, card_scope)
+end
+
+local function draw_scenes_window()
+  if not state.scenes_window then return end
+  if not reaper.ImGui_Begin then return end
+  if reaper.ImGui_SetNextWindowSize then
+    reaper.ImGui_SetNextWindowSize(ctx, 1240, 760, reaper.ImGui_Cond_Appearing())
+  end
+  local ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'Scenes manager', true)
+  if not ok then
+    state.scenes_window = false
+    return
+  end
+  local text_sc = 0
+  if theme and theme.colors and theme.rgba and reaper.ImGui_PushStyleColor then
+    local c = theme.colors()
+    local r, g, b, a = theme.rgba(c.text)
+    r = math.min(1, r + 0.08)
+    g = math.min(1, g + 0.08)
+    b = math.min(1, b + 0.08)
+    local col_id = reaper.ImGui_Col_Text
+    if type(col_id) == 'function' then col_id = col_id() end
+    if reaper.ImGui_ColorConvertDouble4ToU32 then
+      local packed = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, packed) then
+        text_sc = 1
+      end
+    else
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, r, g, b, a) then
+        text_sc = 1
+      end
+    end
+  end
+  if open == false then
+    state.scenes_window = false
+  end
+  if visible then
+    draw_scenes_manager()
+  end
+  if text_sc > 0 then
+    pcall(reaper.ImGui_PopStyleColor, ctx, text_sc)
+  end
+  pcall(reaper.ImGui_End, ctx)
 end
 local function hb_write(key)
   ext_set(key, string.format('%.6f', now()), false)
@@ -634,6 +670,26 @@ local function ensure_fxpanels_started()
   end
 end
 
+local function full_restart_replace()
+  ext_set('FxPanelsStop', '1', false)
+  state.fxpanels_started = false
+  stop_bridge()
+  send_control('restart')
+  poll_status()
+  start_bridge()
+  ensure_fxpanels_started()
+  ext_set('FxReplaceEnabled', '1', true)
+end
+
+local function full_stop_all()
+  ext_set('FxPanelsStop', '1', false)
+  state.fxpanels_started = false
+  ext_set('FxReplaceEnabled', '0', true)
+  stop_bridge()
+  send_control('stop')
+  poll_status()
+end
+
 -- ---------- single instance / show on re-run ----------
 local function is_control_alive()
   return hb_alive(ext_get('ControlProcHB'))
@@ -682,14 +738,35 @@ local function draw_window()
 
   -- predictable starting size, and never 0x0
   if reaper.ImGui_SetNextWindowSizeConstraints then
-    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 520, 320, 4096, 4096)
+    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 460, 280, 4096, 4096)
   end
-  reaper.ImGui_SetNextWindowSize(ctx, 720, 460, reaper.ImGui_Cond_Appearing())
+  reaper.ImGui_SetNextWindowSize(ctx, 620, 380, reaper.ImGui_Cond_Appearing())
 
   local sv, sc = theme.push(ctx, 1.0)
+  local text_sc = 0
+  if theme and theme.colors and theme.rgba and reaper.ImGui_PushStyleColor then
+    local c = theme.colors()
+    local r, g, b, a = theme.rgba(c.text)
+    r = math.min(1, r + 0.08)
+    g = math.min(1, g + 0.08)
+    b = math.min(1, b + 0.08)
+    local col_id = reaper.ImGui_Col_Text
+    if type(col_id) == 'function' then col_id = col_id() end
+    if reaper.ImGui_ColorConvertDouble4ToU32 then
+      local packed = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, packed) then
+        text_sc = 1
+      end
+    else
+      if pcall(reaper.ImGui_PushStyleColor, ctx, col_id, r, g, b, a) then
+        text_sc = 1
+      end
+    end
+  end
   local began_ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'ReaperRM Control', true)
   if not began_ok then
     state.ui_visible = false
+    if text_sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, text_sc) end
     theme.pop(ctx, sv, sc)
     return
   end
@@ -709,8 +786,8 @@ local function draw_window()
       if state.show_diag then poll_logs() end
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
-    if ui.button_secondary(ctx, state.show_scenes and 'Hide scenes' or 'Show scenes', 1.0) then
-      state.show_scenes = not state.show_scenes
+    if ui.button_secondary(ctx, state.scenes_window and 'Hide scenes' or 'Show scenes', 1.0) then
+      state.scenes_window = not state.scenes_window
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
     if ui.button_ghost(ctx, 'Hide window', 1.0) then
@@ -721,21 +798,44 @@ local function draw_window()
 
     reaper.ImGui_Separator(ctx)
 
-    if state.show_scenes then
-      draw_scenes_manager()
-      reaper.ImGui_Separator(ctx)
-    end
-
     local st = state.status or {}
-    reaper.ImGui_Text(ctx, 'Server: ' .. ((st.running and 'running') or 'stopped'))
-    ui.caption_muted(ctx, 'URL: ' .. url_for(st))
-
     local bridge_conn = tostring(ext_get('BridgeConnected')) == '1'
     local bridge_err = tostring(ext_get('BridgeLastError') or '')
-    reaper.ImGui_Text(ctx, 'Bridge: ' .. (bridge_conn and 'connected' or 'disconnected'))
-    if (not bridge_conn) and bridge_err ~= '' then
-      reaper.ImGui_TextWrapped(ctx, 'Bridge error: ' .. bridge_err)
+    local function text_white(text)
+      if reaper.ImGui_TextColored and reaper.ImGui_ColorConvertDouble4ToU32 then
+        local col = reaper.ImGui_ColorConvertDouble4ToU32(1, 1, 1, 1)
+        reaper.ImGui_TextColored(ctx, col, text)
+      else
+        reaper.ImGui_Text(ctx, text)
+      end
     end
+    local function status_color(ok)
+      if theme and theme.colors and theme.rgba then
+        local c = theme.colors()
+        return theme.rgba(ok and c.success or c.danger)
+      end
+      return nil
+    end
+    local function status_line(label, ok, detail)
+      local status = ok and 'ONLINE' or 'OFFLINE'
+      local r, g, b, a = status_color(ok)
+      reaper.ImGui_Text(ctx, label .. ':')
+      reaper.ImGui_SameLine(ctx, 0, 8)
+      if r and reaper.ImGui_TextColored and reaper.ImGui_ColorConvertDouble4ToU32 then
+        local col = reaper.ImGui_ColorConvertDouble4ToU32(r, g, b, a)
+        reaper.ImGui_TextColored(ctx, col, status)
+      else
+        reaper.ImGui_Text(ctx, status)
+      end
+      if detail and detail ~= '' then
+        reaper.ImGui_SameLine(ctx, 0, 8)
+        text_white(detail)
+      end
+    end
+
+    ui.section_title(ctx, 'Status')
+    status_line('Server', st.running, 'URL: ' .. url_for(st))
+    status_line('Bridge', bridge_conn, bridge_conn and 'Connected' or (bridge_err ~= '' and ('Error: ' .. bridge_err) or 'Disconnected'))
 
     if ui.button_primary(ctx, 'Start all', 1.0) then
       spawn_daemon()
@@ -752,9 +852,17 @@ local function draw_window()
       poll_status()
     end
     reaper.ImGui_SameLine(ctx)
+    if ui.button_secondary(ctx, 'Full stop (shutdown servers)', 1.0) then
+      full_stop_all()
+    end
+    reaper.ImGui_SameLine(ctx)
     if ui.button_secondary(ctx, 'Restart server', 1.0) then
       send_control('restart')
       poll_status()
+    end
+    reaper.ImGui_SameLine(ctx)
+    if ui.button_secondary(ctx, 'Full restart (ReaImGui replace)', 1.0) then
+      full_restart_replace()
     end
 
     reaper.ImGui_Separator(ctx)
@@ -765,7 +873,7 @@ local function draw_window()
       ext_set('FxReplaceEnabled', enabled and '1' or '0', true)
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
-    ui.caption_muted(ctx, string.format('Last updated %.1fs ago', math.max(0, now() - (state.last_poll or 0))))
+    text_white(string.format('Last updated %.1fs ago', math.max(0, now() - (state.last_poll or 0))))
 
     if state.error and state.error ~= '' then
       reaper.ImGui_Separator(ctx)
@@ -799,6 +907,8 @@ local function draw_window()
   end
 
   pcall(reaper.ImGui_End, ctx)
+  if text_sc > 0 then pcall(reaper.ImGui_PopStyleColor, ctx, text_sc) end
+  draw_scenes_window()
   theme.pop(ctx, sv, sc)
 end
 
