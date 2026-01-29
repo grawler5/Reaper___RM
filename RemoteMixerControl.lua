@@ -702,9 +702,9 @@ local function draw_window()
 
   -- predictable starting size, and never 0x0
   if reaper.ImGui_SetNextWindowSizeConstraints then
-    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 520, 320, 4096, 4096)
+    pcall(reaper.ImGui_SetNextWindowSizeConstraints, ctx, 460, 280, 4096, 4096)
   end
-  reaper.ImGui_SetNextWindowSize(ctx, 720, 460, reaper.ImGui_Cond_Appearing())
+  reaper.ImGui_SetNextWindowSize(ctx, 620, 380, reaper.ImGui_Cond_Appearing())
 
   local sv, sc = theme.push(ctx, 1.0)
   local began_ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'ReaperRM Control', true)
