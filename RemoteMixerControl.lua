@@ -334,6 +334,9 @@ end
 local function draw_scenes_window()
   if not state.scenes_window then return end
   if not reaper.ImGui_Begin then return end
+  if reaper.ImGui_SetNextWindowSize then
+    reaper.ImGui_SetNextWindowSize(ctx, 1240, 760, reaper.ImGui_Cond_Appearing())
+  end
   local ok, visible, open = pcall(reaper.ImGui_Begin, ctx, 'Scenes manager', true)
   if not ok then
     state.scenes_window = false
@@ -798,6 +801,14 @@ local function draw_window()
     local st = state.status or {}
     local bridge_conn = tostring(ext_get('BridgeConnected')) == '1'
     local bridge_err = tostring(ext_get('BridgeLastError') or '')
+    local function text_white(text)
+      if reaper.ImGui_TextColored and reaper.ImGui_ColorConvertDouble4ToU32 then
+        local col = reaper.ImGui_ColorConvertDouble4ToU32(1, 1, 1, 1)
+        reaper.ImGui_TextColored(ctx, col, text)
+      else
+        reaper.ImGui_Text(ctx, text)
+      end
+    end
     local function status_color(ok)
       if theme and theme.colors and theme.rgba then
         local c = theme.colors()
@@ -818,7 +829,7 @@ local function draw_window()
       end
       if detail and detail ~= '' then
         reaper.ImGui_SameLine(ctx, 0, 8)
-        ui.caption_muted(ctx, detail)
+        text_white(detail)
       end
     end
 
@@ -862,7 +873,7 @@ local function draw_window()
       ext_set('FxReplaceEnabled', enabled and '1' or '0', true)
     end
     reaper.ImGui_SameLine(ctx, 0, 8)
-    ui.caption_muted(ctx, string.format('Last updated %.1fs ago', math.max(0, now() - (state.last_poll or 0))))
+    text_white(string.format('Last updated %.1fs ago', math.max(0, now() - (state.last_poll or 0))))
 
     if state.error and state.error ~= '' then
       reaper.ImGui_Separator(ctx)
