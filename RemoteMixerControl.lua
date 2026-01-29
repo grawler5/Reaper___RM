@@ -613,6 +613,17 @@ local function stop_bridge()
   ext_set('BridgeStop', '1', false)
 end
 
+local function full_restart_replace()
+  ext_set('FxPanelsStop', '1', false)
+  state.fxpanels_started = false
+  stop_bridge()
+  send_control('restart')
+  poll_status()
+  start_bridge()
+  ensure_fxpanels_started()
+  ext_set('FxReplaceEnabled', '1', true)
+end
+
 -- ---------- fx panels ----------
 local function ensure_fxpanels_started()
   if state.fxpanels_started then return end
@@ -755,6 +766,10 @@ local function draw_window()
     if ui.button_secondary(ctx, 'Restart server', 1.0) then
       send_control('restart')
       poll_status()
+    end
+    reaper.ImGui_SameLine(ctx)
+    if ui.button_secondary(ctx, 'Full restart (ReaImGui replace)', 1.0) then
+      full_restart_replace()
     end
 
     reaper.ImGui_Separator(ctx)
